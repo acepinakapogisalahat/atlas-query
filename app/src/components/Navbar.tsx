@@ -5,6 +5,8 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState, useRef } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { useRole } from '@/utils/supabase/role';
+import { useSuperuser } from '@/utils/supabase/useSuperuser';
+import NotificationBell from '@/components/NotificationBell';
 
 function MapIcon({ className }: { className?: string }) {
   return (
@@ -74,8 +76,12 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  const isManager = role.isOwner || role.isAdmin;
-  const homePath = isManager ? '/business' : '/';
+  // Superuser detection (parallel to useRole — doesn't mutate shared hook)
+const { isSuperadmin } = useSuperuser();
+const isOwnerOnly = role.isOwner && !role.isAdmin; // business owner, NOT platform admin
+const isManager = isOwnerOnly || role.isAdmin; // kept for backward compat in non-superuser branches
+const homePath = isSuperadmin ? '/admin' : isManager ? '/business' : '/';
+const homeLabel = isSuperadmin ? 'Superuser Console' : isManager ? 'Business Hub' : 'Discover';
 
   // Scroll effect for dynamic glassmorphism
   useEffect(() => {
@@ -185,32 +191,31 @@ export default function Navbar() {
           </Link>
 
           {/* Desktop Navigation links */}
-          <div className="hidden md:flex items-center gap-1 bg-white/60 backdrop-blur-sm p-1 rounded-full border border-slate-200/60 shadow-sm">
-            <Link href={homePath} prefetch className={navCls(homePath)}>
-              {isManager ? 'Business hub' : 'Discover'}
-            </Link>
-            <Link href="/search" prefetch className={navCls('/search')}>
-              Search
-            </Link>
-            {role.authId && !isManager && (
-              <Link href="/my-trips" prefetch className={navCls('/my-trips')}>
-                My trips
-              </Link>
-            )}
-            {role.isOwner && (
-              <Link href="/owner" prefetch className={navCls('/owner')}>
-                My listings
-              </Link>
-            )}
-            {role.isAdmin && (
-              <Link href="/admin" prefetch className={navCls('/admin')}>
-                Admin
-              </Link>
-            )}
-          </div>
+          <div className="hidden md:flex items-center gap-1 bg-slate-100/40 p-1 rounded-full border border-slate-200/50">
+  <Link href={homePath} prefetch className={navCls(homePath)}>
+    {homeLabel}
+  </Link>
+  {/* Search + My trips hidden for superusers (they have /admin for management) */}
+  {!isSuperadmin && (
+    <Link href="/search" prefetch className={navCls('/search')}>
+      Search
+    </Link>
+  )}
+  {!isSuperadmin && role.authId && !isManager && (
+    <Link href="/my-trips" prefetch className={navCls('/my-trips')}>
+      My trips
+    </Link>
+  )}
+  {role.isOwner && !isSuperadmin && (
+  <Link href="/owner" prefetch className={navCls('/owner')}>
+    My listings
+  </Link>
+)}
+</div>
 
           {/* Right side */}
           <div className="flex items-center gap-3">
+            {role.authId && <NotificationBell />}
             {role.loading ? (
               <div className="w-24 h-9 bg-slate-100 rounded-full animate-pulse" />
             ) : role.authId ? (
@@ -314,15 +319,17 @@ export default function Navbar() {
             <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600">
               <MapIcon className="w-4 h-4" />
             </div>
-            {isManager ? 'Business hub' : 'Discover'}
+            {isSuperadmin ? 'Superuser Console' : isManager ? 'Business hub' : 'Discover'}
           </Link>
-          <Link href="/search" className={mobileNavCls('/search')}>
-            <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" strokeLinecap="round" strokeLinejoin="round" /></svg>
-            </div>
-            Search
-          </Link>
-          {role.authId && !isManager && (
+          {!isSuperadmin && (
+            <Link href="/search" className={mobileNavCls('/search')}>
+              <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              </div>
+              Search
+            </Link>
+          )}
+          {!isSuperadmin && role.authId && !isManager && (
             <Link href="/my-trips" className={mobileNavCls('/my-trips')}>
               <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" strokeLinecap="round" strokeLinejoin="round" /></svg>
@@ -330,20 +337,12 @@ export default function Navbar() {
               My trips
             </Link>
           )}
-          {role.isOwner && (
+          {role.isOwner && !isSuperadmin && (
             <Link href="/owner" className={mobileNavCls('/owner')}>
               <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600">
                 <BuildingIcon className="w-4 h-4" />
               </div>
               My listings
-            </Link>
-          )}
-          {role.isAdmin && (
-            <Link href="/admin" className={mobileNavCls('/admin')}>
-              <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" strokeLinecap="round" strokeLinejoin="round" /><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" strokeLinecap="round" strokeLinejoin="round" /></svg>
-              </div>
-              Admin
             </Link>
           )}
           

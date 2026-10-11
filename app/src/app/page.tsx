@@ -8,6 +8,7 @@ import { createClient } from '@/utils/supabase/client';
 import Footer from '@/components/Footer';
 import SmartSearch from '@/components/SmartSearch';
 import { useRole } from '@/utils/supabase/role';
+import { useSuperuser } from '@/utils/supabase/useSuperuser';
 
 type Rec = {
   recommendation_score: number;
@@ -186,25 +187,32 @@ export default function HomePage() {
   const role = useRole();
   const [routing, setRouting] = useState<boolean | null>(null);
 
-  useEffect(() => {
-    async function route() {
-      if (role.loading) return;
-      if (!role.authId) { setRouting(false); return; }
-      if (role.isOwner || role.isAdmin) { router.replace('/business'); return; }
-      if (role.userId) {
-        const { data, error } = await supabase
-          .from('business_applications')
-          .select('status')
-          .eq('user_id', role.userId)
-          .limit(1);
-        const st = !error ? (data?.[0]?.status ?? null) : null;
-        if (st === 'pending') { router.replace('/business'); return; }
-      }
-      setRouting(false);
+// Parallel superuser gate — additive, doesn't mutate useRole
+const { isSuperadmin, loading: suLoading } = useSuperuser();
+
+useEffect(() => {
+  async function route() {
+    if (role.loading || suLoading) return;
+    if (!role.authId) { setRouting(false); return; }
+    // Superusers → /admin (never /business)
+    if (isSuperadmin) { router.replace('/admin'); return; }
+    // Business owners → /business
+    if (role.isOwner || role.isAdmin) { router.replace('/business'); return; }
+    // Pending applicants → /business (to see their application status)
+    if (role.userId) {
+      const { data, error } = await supabase
+        .from('business_applications')
+        .select('status')
+        .eq('user_id', role.userId)
+        .limit(1);
+      const st = !error ? (data?.[0]?.status ?? null) : null;
+      if (st === 'pending') { router.replace('/business'); return; }
     }
-    route();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [role.loading, role.authId, role.isOwner, role.isAdmin, role.userId]);
+    setRouting(false);
+  }
+  route();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [role.loading, suLoading, role.authId, role.isOwner, role.isAdmin, role.userId, isSuperadmin]);
 
   const [firstName, setFirstName] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
