@@ -26,6 +26,43 @@ type Trip = {
   end_date: string | null;
 };
 
+/* ───────────────  Neumorphic + Glass tokens (shared system)  ─────────────── */
+const CANVAS = 'min-h-screen bg-[#e8ecf8] relative overflow-hidden';
+const NEU = 'bg-[#edf0fa] shadow-[10px_10px_24px_rgba(163,170,205,0.42),-10px_-10px_24px_rgba(255,255,255,0.95)]';
+const NEU_SM = 'bg-[#edf0fa] shadow-[6px_6px_14px_rgba(163,170,205,0.38),-6px_-6px_14px_rgba(255,255,255,0.9)]';
+const NEU_HOVER = 'transition-all duration-300 hover:-translate-y-1 hover:shadow-[14px_14px_32px_rgba(163,170,205,0.5),-14px_-14px_32px_rgba(255,255,255,1)]';
+const INSET = 'bg-[#e4e8f4] shadow-[inset_5px_5px_11px_rgba(163,170,205,0.38),inset_-5px_-5px_11px_rgba(255,255,255,0.85)]';
+const GLASS = 'bg-white/55 backdrop-blur-xl border border-white/70 shadow-[0_10px_34px_rgba(110,120,190,0.2)]';
+const GLASS_SM = 'bg-white/45 backdrop-blur-md border border-white/60 shadow-[0_4px_16px_rgba(110,120,190,0.18),inset_0_1px_0_rgba(255,255,255,0.65)]';
+const SHEEN = 'before:pointer-events-none before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/35 before:via-white/5 before:to-transparent';
+const GRAD = 'from-indigo-500 via-violet-500 to-fuchsia-500';
+const GRAD_TEXT = 'bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 bg-clip-text text-transparent';
+const BTN_VIOLET = `relative overflow-hidden bg-gradient-to-r ${GRAD} text-white shadow-[0_12px_30px_-8px_rgba(124,58,237,0.7),inset_0_1px_0_rgba(255,255,255,0.5)] hover:brightness-110 active:scale-[0.97] transition ${SHEEN}`;
+const FIELD = 'w-full px-4 py-3 rounded-2xl bg-[#e4e8f4] shadow-[inset_4px_4px_9px_rgba(163,170,205,0.4),inset_-4px_-4px_9px_rgba(255,255,255,0.85)] border border-transparent text-sm text-slate-700 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-violet-400/60 transition';
+const FIELD_SM = FIELD.replace('py-3', 'py-2.5');
+const LBL = 'block text-[11px] font-black uppercase tracking-[0.15em] text-slate-400 mb-1.5';
+
+function GlassWellIcon({ gradient, children, size = 'md' }: { gradient: string; children: React.ReactNode; size?: 'md' | 'lg' }) {
+  return (
+    <div
+      className={`relative overflow-hidden ${size === 'lg' ? 'w-14 h-14 rounded-2xl' : 'w-12 h-12 rounded-2xl'} bg-gradient-to-br ${gradient} text-white flex items-center justify-center shrink-0 shadow-[0_10px_24px_-8px_rgba(80,90,180,0.65),inset_0_1px_0_rgba(255,255,255,0.55)]`}
+    >
+      <span className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/35 via-transparent to-transparent" />
+      <span className="relative flex items-center justify-center">{children}</span>
+    </div>
+  );
+}
+
+function AccentBar() {
+  return <div className={`mt-2.5 h-1.5 w-20 rounded-full bg-gradient-to-r ${GRAD} shadow-[0_0_14px_rgba(139,92,246,0.65)]`} />;
+}
+
+function avatarGradient(rating: number) {
+  if (rating <= 2) return 'from-rose-400 to-red-500';
+  if (rating === 5) return 'from-emerald-400 to-teal-500';
+  return 'from-indigo-400 to-violet-500';
+}
+
 function Star({ className, filled }: { className?: string; filled?: boolean }) {
   return (
     <svg viewBox="0 0 20 20" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5" className={className ?? 'w-4 h-4'}>
@@ -108,9 +145,12 @@ function Check({ className }: { className?: string }) {
 
 function SectionHeader({ title, helper }: { title: string; helper?: string }) {
   return (
-    <div className="flex items-baseline justify-between mb-4">
-      <h2 className="text-base font-semibold text-slate-900">{title}</h2>
-      {helper && <span className="text-xs text-slate-400">{helper}</span>}
+    <div className="mb-5">
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 className="text-lg font-black text-slate-800">{title}</h2>
+        {helper && <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">{helper}</span>}
+      </div>
+      <AccentBar />
     </div>
   );
 }
@@ -121,18 +161,18 @@ function SafeImg({ src, alt, type }: { src: string | null; alt: string; type: st
   return usable ? (
     <img src={src!} alt={alt} onError={() => setFailed(true)} className="w-full h-full object-cover" />
   ) : (
-    <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-slate-100 to-slate-200">
-      <Camera className="w-6 h-6 text-slate-400" />
-      <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">{type}</span>
+    <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-indigo-100 via-violet-100 to-fuchsia-100">
+      <Camera className="w-6 h-6 text-violet-300" />
+      <span className="text-xs font-black uppercase tracking-wider text-violet-300">{type}</span>
     </div>
   );
 }
 
 function DetailTile({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-slate-50 rounded-xl p-4">
-      <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">{label}</p>
-      <p className="text-sm text-slate-800 font-medium">{value}</p>
+    <div className={`${INSET} rounded-2xl p-4`}>
+      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">{label}</p>
+      <p className="text-sm text-slate-700 font-bold">{value}</p>
     </div>
   );
 }
@@ -251,24 +291,29 @@ export default function ListingDetailPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <p className="text-sm text-slate-400">Loading listing…</p>
+      <main className={`${CANVAS} flex items-center justify-center`}>
+        <div className="text-center">
+          <div className={`w-16 h-16 mx-auto rounded-full ${INSET} flex items-center justify-center`}>
+            <div className="w-9 h-9 rounded-full border-4 border-violet-200 border-t-violet-600 animate-spin" />
+          </div>
+          <p className="mt-5 text-sm font-medium text-slate-400">Loading listing…</p>
+        </div>
       </main>
     );
   }
 
   if (!listing) {
     return (
-      <main className="min-h-screen bg-slate-50 flex items-center justify-center p-8">
-        <div className="text-center max-w-md">
-          <p className="text-5xl font-semibold tracking-tight text-slate-900">404</p>
-          <h1 className="mt-3 text-xl font-semibold text-slate-900">Listing not found</h1>
+      <main className={`${CANVAS} flex items-center justify-center p-8`}>
+        <div className={`${NEU} rounded-3xl p-10 max-w-md text-center`}>
+          <p className={`text-6xl font-black ${GRAD_TEXT}`}>404</p>
+          <h1 className="mt-3 text-xl font-black text-slate-800">Listing not found</h1>
           <p className="mt-2 text-sm text-slate-500">This place may have been removed or the link is incorrect.</p>
           <div className="mt-6 flex justify-center gap-3">
-            <Link href="/search" className="px-5 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition">
-              Search places
+            <Link href="/search" className={`${BTN_VIOLET} px-5 py-2.5 rounded-full text-sm font-bold`}>
+              <span className="relative">Search places</span>
             </Link>
-            <button onClick={() => router.back()} className="px-5 py-2.5 rounded-xl border border-slate-300 bg-white text-sm font-medium text-slate-700 hover:border-slate-400 transition">
+            <button onClick={() => router.back()} className={`${GLASS_SM} px-5 py-2.5 rounded-full text-sm font-bold text-slate-600 hover:bg-white/70 transition btn-press active:scale-95`}>
               Go back
             </button>
           </div>
@@ -287,51 +332,57 @@ export default function ListingDetailPage() {
   const avg = listing.average_rating != null ? Number(listing.average_rating) : null;
 
   return (
-    <main className="min-h-screen bg-slate-50 pb-16 page-enter">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <main className={CANVAS}>
+      {/* Ambient gradient orbs */}
+      <div className="pointer-events-none fixed -top-32 -left-32 w-[34rem] h-[34rem] rounded-full bg-violet-300/30 blur-3xl z-0" />
+      <div className="pointer-events-none fixed top-1/3 -right-40 w-[30rem] h-[30rem] rounded-full bg-sky-300/25 blur-3xl z-0" />
+      <div className="pointer-events-none fixed -bottom-40 left-1/3 w-[32rem] h-[32rem] rounded-full bg-fuchsia-300/20 blur-3xl z-0" />
+
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-20">
         <button
           onClick={() => router.back()}
-          className="flex items-center gap-1 text-sm font-medium text-slate-500 hover:text-slate-900 transition mb-6"
+          className={`${GLASS_SM} inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-bold text-slate-600 hover:text-violet-600 hover:bg-white/70 transition btn-press active:scale-95 mb-7`}
         >
           <ChevronLeft className="w-4 h-4" />
           Back to results
         </button>
 
         {/* Two-column header: info left, gallery right */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-start mb-10">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-start mb-12">
           {/* LEFT — info */}
-          <div>
-            <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider bg-blue-50 text-blue-700 mb-4">
+          <div className="animate-fade-in-up">
+            <span className={`inline-block px-3.5 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider bg-gradient-to-r ${GRAD} text-white shadow-[0_8px_18px_-6px_rgba(124,58,237,0.7)] mb-4`}>
               {listing.listing_type}
             </span>
-            <h1 className="text-3xl md:text-4xl font-semibold tracking-tight text-slate-900">{listing.name}</h1>
+            <h1 className="text-3xl md:text-4xl font-black tracking-tight text-slate-800">{listing.name}</h1>
+            <AccentBar />
 
-            <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-500">
-              <span className="flex items-center gap-1 font-semibold text-amber-600">
+            <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm">
+              <span className="flex items-center gap-1.5 font-black text-amber-500">
                 <Star className="w-4 h-4" filled />
                 {avg != null ? avg.toFixed(1) : 'New'}
               </span>
               <span className="text-slate-300">·</span>
-              <span>{reviews.length} review{reviews.length === 1 ? '' : 's'}</span>
+              <span className="font-semibold text-slate-500">{reviews.length} review{reviews.length === 1 ? '' : 's'}</span>
               {destination && (
                 <>
                   <span className="text-slate-300">·</span>
-                  <span className="flex items-center gap-1">
-                    <Pin className="w-4 h-4 text-slate-400" />
+                  <span className="flex items-center gap-1 font-semibold text-slate-500">
+                    <Pin className="w-4 h-4 text-violet-400" />
                     {destination.destination_name}, {destination.region_country}
                   </span>
                 </>
               )}
             </div>
 
-            {listing.address && <p className="mt-3 text-sm text-slate-500">{listing.address}</p>}
+            {listing.address && <p className="mt-3 text-sm text-slate-500 font-medium">{listing.address}</p>}
 
             {subtypeDetails?.coordinates && (
               <a
                 href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(subtypeDetails.coordinates)}`}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1.5 mt-3 px-3 py-1.5 rounded-full bg-slate-100 text-xs font-medium text-slate-600 hover:bg-slate-200 transition"
+                className={`${GLASS_SM} inline-flex items-center gap-1.5 mt-3 px-3.5 py-2 rounded-full text-xs font-bold text-violet-600 hover:bg-white/70 transition btn-press active:scale-95`}
               >
                 <Pin className="w-3.5 h-3.5" />
                 Open in Google Maps
@@ -343,25 +394,25 @@ export default function ListingDetailPage() {
             </p>
 
             {/* Quick facts */}
-            <div className="mt-5 grid grid-cols-2 gap-3">
-              <div className="bg-white border border-slate-200 rounded-xl p-3">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Budget</p>
-                <p className="text-sm font-medium text-slate-800 mt-0.5">{listing.budget_tier || '—'}</p>
+            <div className="mt-6 grid grid-cols-2 gap-3">
+              <div className={`${INSET} rounded-2xl p-3.5`}>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Budget</p>
+                <p className="text-sm font-bold text-slate-700 mt-0.5">{listing.budget_tier || '—'}</p>
               </div>
-              <div className="bg-white border border-slate-200 rounded-xl p-3">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Best for</p>
-                <p className="text-sm font-medium text-slate-800 mt-0.5">{listing.activity_tag || '—'}</p>
+              <div className={`${INSET} rounded-2xl p-3.5`}>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Best for</p>
+                <p className="text-sm font-bold text-slate-700 mt-0.5">{listing.activity_tag || '—'}</p>
               </div>
               {listing.listing_type === 'Attraction' && subtypeDetails && (
-                <div className="bg-white border border-slate-200 rounded-xl p-3">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Activity</p>
-                  <p className="text-sm font-medium text-slate-800 mt-0.5">{subtypeDetails.activity_name || '—'}</p>
+                <div className={`${INSET} rounded-2xl p-3.5`}>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Activity</p>
+                  <p className="text-sm font-bold text-slate-700 mt-0.5">{subtypeDetails.activity_name || '—'}</p>
                 </div>
               )}
               {listing.listing_type === 'Attraction' && (
-                <div className="bg-white border border-slate-200 rounded-xl p-3">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Open hours</p>
-                  <p className="text-sm font-medium text-slate-800 mt-0.5">
+                <div className={`${INSET} rounded-2xl p-3.5`}>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Open hours</p>
+                  <p className="text-sm font-bold text-slate-700 mt-0.5">
                     {scheduleInfo?.open_time && scheduleInfo?.close_time
                       ? `${fmtTimeShort(scheduleInfo.open_time)} – ${fmtTimeShort(scheduleInfo.close_time)}`
                       : 'Open daily'}
@@ -369,30 +420,30 @@ export default function ListingDetailPage() {
                 </div>
               )}
               {listing.listing_type === 'Hotel' && subtypeDetails && (
-                <div className="bg-white border border-slate-200 rounded-xl p-3">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Star rating</p>
-                  <p className="text-sm font-medium text-slate-800 mt-0.5">{subtypeDetails.star_rating || '—'}</p>
+                <div className={`${INSET} rounded-2xl p-3.5`}>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Star rating</p>
+                  <p className="text-sm font-bold text-slate-700 mt-0.5">{subtypeDetails.star_rating || '—'}</p>
                 </div>
               )}
               {listing.listing_type === 'Restaurant' && subtypeDetails && (
-                <div className="bg-white border border-slate-200 rounded-xl p-3">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Cuisine</p>
-                  <p className="text-sm font-medium text-slate-800 mt-0.5">{subtypeDetails.cuisine_type || '—'}</p>
+                <div className={`${INSET} rounded-2xl p-3.5`}>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Cuisine</p>
+                  <p className="text-sm font-bold text-slate-700 mt-0.5">{subtypeDetails.cuisine_type || '—'}</p>
                 </div>
               )}
             </div>
 
             {/* Traveler actions — hidden for owners/admins */}
             {!isManager && (
-              <div className="flex gap-3 mt-6">
+              <div className="flex flex-wrap gap-3 mt-7">
                 <button
                   onClick={() => {
                     if (!userId) router.push('/login');
                     else setShowAddToTrip(true);
                   }}
-                  className="flex items-center gap-2 px-6 py-3 rounded-xl border border-slate-300 bg-white text-sm font-medium text-slate-700 hover:border-blue-300 hover:text-blue-700 hover:bg-blue-50/40 transition shadow-sm"
+                  className={`${GLASS_SM} flex items-center gap-2 px-6 py-3 rounded-full text-sm font-bold text-slate-700 hover:text-violet-600 hover:bg-white/70 transition btn-press active:scale-95`}
                 >
-                  {inTripCount > 0 ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                  {inTripCount > 0 ? <Check className="w-4 h-4 text-emerald-500" /> : <Plus className="w-4 h-4" />}
                   {inTripCount > 0 ? `In ${inTripCount} trip${inTripCount === 1 ? '' : 's'}` : 'Add to trip'}
                 </button>
                 <button
@@ -400,39 +451,42 @@ export default function ListingDetailPage() {
                     if (!userId) router.push('/login');
                     else setShowBooking(true);
                   }}
-                  className="flex items-center gap-2 px-6 py-3 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 active:bg-blue-800 transition shadow-sm"
+                  className={`${BTN_VIOLET} flex items-center gap-2 px-6 py-3 rounded-full text-sm font-bold`}
                 >
-                  <Calendar className="w-4 h-4" />
-                  Book now
+                  <span className="relative flex items-center gap-2">
+                    <Calendar className="w-4 h-4" />
+                    Book now
+                  </span>
                 </button>
               </div>
             )}
           </div>
 
           {/* RIGHT — gallery */}
-          <div>
+          <div className="animate-fade-in-up" style={{ animationDelay: '80ms' }}>
             {gallery.length === 0 ? (
-              <div className="h-80 md:h-[26rem] rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 flex flex-col items-center justify-center gap-3">
-                <Camera className="w-8 h-8 text-slate-400" />
-                <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">No photos yet</span>
+              <div className={`h-80 md:h-[26rem] rounded-3xl ${INSET} flex flex-col items-center justify-center gap-3`}>
+                <Camera className="w-8 h-8 text-violet-300" />
+                <span className="text-xs font-black uppercase tracking-wider text-violet-300">No photos yet</span>
               </div>
             ) : (
               <>
                 <button
                   onClick={() => setLightbox(safeIndex)}
-                  className="relative block w-full aspect-[4/3] rounded-2xl overflow-hidden bg-slate-200 shadow-sm group"
+                  className={`relative block w-full aspect-[4/3] rounded-3xl overflow-hidden ${NEU} group`}
                   aria-label="Open photo viewer"
                 >
                   <SafeImg src={hero?.photo_url ?? null} alt={hero?.caption ?? listing.name} type={listing.listing_type} />
+                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent" />
                   {hero?.caption && (
-                    <span className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent text-white text-xs p-4 text-left">
+                    <span className="absolute bottom-0 left-0 right-0 text-white text-xs font-semibold p-4 text-left drop-shadow">
                       {hero.caption}
                     </span>
                   )}
-                  <span className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-black/50 text-white text-[11px] font-medium backdrop-blur">
+                  <span className={`${GLASS_SM} absolute top-3 left-3 px-2.5 py-1 rounded-full text-[11px] font-black text-slate-700`}>
                     {safeIndex + 1} / {gallery.length}
                   </span>
-                  <span className="absolute bottom-3 right-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/50 text-white text-xs font-medium backdrop-blur group-hover:bg-black/70 transition">
+                  <span className="absolute bottom-3 right-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/55 text-white text-xs font-bold backdrop-blur-md group-hover:bg-black/75 transition">
                     <Camera className="w-3.5 h-3.5" />
                     View full screen
                   </span>
@@ -445,8 +499,10 @@ export default function ListingDetailPage() {
                         key={p.photo_id ?? i}
                         onClick={() => setActivePhoto(i)}
                         aria-label={`Show photo ${i + 1}`}
-                        className={`aspect-[4/3] rounded-xl overflow-hidden border-2 transition ${
-                          i === safeIndex ? 'border-blue-600 shadow-sm' : 'border-transparent opacity-75 hover:opacity-100'
+                        className={`aspect-[4/3] rounded-2xl overflow-hidden transition-all duration-200 ${
+                          i === safeIndex
+                            ? 'ring-2 ring-violet-500 shadow-[0_8px_18px_-6px_rgba(124,58,237,0.7)] scale-[1.02]'
+                            : 'ring-1 ring-white/60 opacity-70 hover:opacity-100'
                         }`}
                       >
                         <SafeImg src={p.photo_url} alt={`Photo ${i + 1}`} type={listing.listing_type} />
@@ -460,13 +516,13 @@ export default function ListingDetailPage() {
         </div>
 
         {/* About | Details */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10 items-start">
-          <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm h-full">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12 items-start">
+          <section className={`${GLASS} rounded-3xl p-7 h-full`}>
             <SectionHeader title="About this place" />
             <p className="text-slate-600 leading-relaxed">{listing.description ?? 'No description provided yet.'}</p>
           </section>
 
-          <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm h-full">
+          <section className={`${GLASS} rounded-3xl p-7 h-full`}>
             <SectionHeader title="Listing details" helper={listing.listing_type} />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {listing.listing_type === 'Attraction' && subtypeDetails && (
@@ -506,17 +562,17 @@ export default function ListingDetailPage() {
           {!isManager ? (
             <ReviewForm listingId={listingId} onSubmitted={() => setRefreshKey((k) => k + 1)} />
           ) : (
-            <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+            <section className={`${GLASS} rounded-3xl p-7`}>
               <SectionHeader title="Write a review" helper="Manager view" />
               <p className="text-sm text-slate-500">
                 Traveler actions (bookings, trip additions, reviews) are hidden for your role.
               </p>
-              <div className="flex flex-wrap gap-2 mt-4">
-                <Link href="/business" className="px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition">
-                  Open business hub
+              <div className="flex flex-wrap gap-2 mt-5">
+                <Link href="/business" className={`${BTN_VIOLET} px-5 py-2.5 rounded-full text-sm font-bold`}>
+                  <span className="relative">Open business hub</span>
                 </Link>
                 {role.isAdmin && (
-                  <Link href="/admin" className="px-4 py-2 rounded-xl border border-slate-300 bg-white text-sm font-medium text-slate-700 hover:border-slate-400 transition">
+                  <Link href="/admin" className={`${GLASS_SM} px-5 py-2.5 rounded-full text-sm font-bold text-slate-600 hover:bg-white/70 transition btn-press active:scale-95`}>
                     Admin manager
                   </Link>
                 )}
@@ -524,56 +580,61 @@ export default function ListingDetailPage() {
             </section>
           )}
 
-          <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+          <section className={`${GLASS} rounded-3xl p-7`}>
             <SectionHeader title="Reviews" helper={`${reviews.length} total`} />
-            <div className="flex items-center gap-3 mb-5">
-              <span className="text-4xl font-semibold tracking-tight text-slate-900">
+            <div className="flex items-center gap-4 mb-6">
+              <span className={`text-5xl font-black ${GRAD_TEXT}`}>
                 {avg != null ? avg.toFixed(1) : '—'}
               </span>
               <div>
                 <div className="flex gap-0.5">
                   {[1, 2, 3, 4, 5].map((n) => (
-                    <Star key={n} className="w-4 h-4 text-amber-500" filled={avg != null && n <= Math.round(avg)} />
+                    <Star key={n} className="w-5 h-5 text-amber-400" filled={avg != null && n <= Math.round(avg)} />
                   ))}
                 </div>
-                <p className="text-xs text-slate-400 mt-1">Average from {reviews.length} traveler{reviews.length === 1 ? '' : 's'}</p>
+                <p className="text-xs text-slate-400 font-semibold mt-1.5">Average from {reviews.length} traveler{reviews.length === 1 ? '' : 's'}</p>
               </div>
             </div>
-            <div className="space-y-5 max-h-[560px] overflow-y-auto pr-2">
+            <div className="space-y-4 max-h-[560px] overflow-y-auto pr-2 scrollbar-hide">
               {reviews.length === 0 && (
                 <p className="text-sm text-slate-500">No reviews yet — be the first to share your experience.</p>
               )}
               {reviews.map((review) => (
-                <div key={review.review_id} className="border-b border-slate-100 pb-5 last:border-0 last:pb-0">
-                  <div className="flex justify-between items-start gap-3 mb-2">
+                <div
+                  key={review.review_id}
+                  className={`${NEU_SM} rounded-2xl p-5 ${review.rating <= 2 ? 'ring-1 ring-rose-200' : ''}`}
+                >
+                  <div className="flex justify-between items-start gap-3 mb-2.5">
                     <div className="flex items-center gap-3 min-w-0">
-                      <span className="w-9 h-9 shrink-0 rounded-full bg-slate-100 text-slate-600 text-sm font-semibold flex items-center justify-center">
-                        {(review.user_name ?? 'T').trim().charAt(0).toUpperCase()}
-                      </span>
+                      <GlassWellIcon gradient={avatarGradient(review.rating)}>
+                        <span className="w-12 h-12 flex items-center justify-center font-black text-base">
+                          {(review.user_name ?? 'T').trim().charAt(0).toUpperCase()}
+                        </span>
+                      </GlassWellIcon>
                       <div className="min-w-0">
-                        <p className="font-semibold text-slate-900 text-sm truncate">{review.user_name || 'TravelMate user'}</p>
-                        <p className="text-xs text-slate-400">
+                        <p className="font-bold text-slate-800 text-sm truncate">{review.user_name || 'TravelMate user'}</p>
+                        <p className="text-xs text-slate-400 font-medium">
                           Visited {review.visit_date ? new Date(review.visit_date).toLocaleDateString() : 'recently'}
                         </p>
                       </div>
                     </div>
                     <div className="flex gap-0.5 shrink-0">
                       {[1, 2, 3, 4, 5].map((n) => (
-                        <Star key={n} className="w-3.5 h-3.5 text-amber-500" filled={n <= review.rating} />
+                        <Star key={n} className={`w-3.5 h-3.5 ${n <= review.rating ? 'text-amber-400' : 'text-slate-200'}`} filled={n <= review.rating} />
                       ))}
                     </div>
                   </div>
-                  {review.title && <p className="font-medium text-slate-800 text-sm mb-1">{review.title}</p>}
+                  {review.title && <p className="font-bold text-slate-700 text-sm mb-1">{review.title}</p>}
                   <p className="text-sm text-slate-600 leading-relaxed">{review.review_text}</p>
                   {review.photo_url && (
                     <img
                       src={review.photo_url}
                       alt="Photo from this review"
-                      className="mt-3 rounded-xl max-h-44 object-cover border border-slate-200"
+                      className="mt-3 rounded-2xl max-h-44 object-cover shadow-md"
                     />
                   )}
                   {review.helpful_votes_count != null && review.helpful_votes_count > 0 && (
-                    <p className="flex items-center gap-1.5 text-xs text-slate-400 mt-2">
+                    <p className="inline-flex items-center gap-1.5 text-xs font-bold text-violet-600 mt-3 px-3 py-1.5 rounded-full bg-violet-50/80 backdrop-blur-md border border-violet-200/70">
                       <ThumbUp className="w-3.5 h-3.5" />
                       {review.helpful_votes_count} found this helpful
                     </p>
@@ -617,10 +678,10 @@ export default function ListingDetailPage() {
       {/* Lightbox viewer */}
       {lightbox != null && gallery.length > 0 && (
         <div
-          className="fixed inset-0 z-50 bg-slate-950/95 flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-sm flex items-center justify-center p-4"
           onClick={() => setLightbox(null)}
         >
-          <span className="absolute top-5 left-1/2 -translate-x-1/2 text-white/80 text-sm font-medium">
+          <span className="absolute top-5 left-1/2 -translate-x-1/2 text-white/80 text-sm font-bold">
             {lightbox + 1} / {gallery.length}
           </span>
           <button
@@ -649,11 +710,11 @@ export default function ListingDetailPage() {
             </>
           )}
           <div className="max-w-5xl w-full" onClick={(e) => e.stopPropagation()}>
-            <div className="aspect-[16/9] w-full rounded-xl overflow-hidden bg-slate-900">
+            <div className="aspect-[16/9] w-full rounded-2xl overflow-hidden bg-slate-900 shadow-2xl">
               <SafeImg src={gallery[lightbox]?.photo_url ?? null} alt={gallery[lightbox]?.caption ?? listing.name} type={listing.listing_type} />
             </div>
             {gallery[lightbox]?.caption && (
-              <p className="text-center text-white/70 text-sm mt-3">{gallery[lightbox].caption}</p>
+              <p className="text-center text-white/70 text-sm mt-3 font-medium">{gallery[lightbox].caption}</p>
             )}
           </div>
         </div>
@@ -778,18 +839,18 @@ function AddToTripModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 animate-fade-in"
+      className="fixed inset-0 z-50 bg-slate-950/40 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in"
       onClick={() => {
         // Don't let an accidental backdrop click dismiss the success message
         if (!done) onClose();
       }}
     >
       <div
-        className="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl max-h-[85vh] overflow-y-auto animate-slide-up"
+        className={`${NEU} rounded-3xl p-6 max-w-md w-full max-h-[85vh] overflow-y-auto animate-slide-up scrollbar-hide`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-slate-900">{done ? 'Added to trip' : 'Add to trip'}</h3>
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="text-lg font-black text-slate-800">{done ? 'Added to trip' : 'Add to trip'}</h3>
           <button
             type="button"
             onClick={() => (done ? onSuccess() : onClose())}
@@ -801,16 +862,16 @@ function AddToTripModal({
         </div>
 
         {err && !done && (
-          <p className="bg-red-50 text-red-700 border border-red-200 rounded-xl px-4 py-3 text-sm mb-4">{err}</p>
+          <p className="bg-rose-50/90 text-rose-700 border border-rose-200 rounded-2xl px-4 py-3 text-sm font-semibold mb-4">{err}</p>
         )}
 
         {done ? (
           /* ── Success screen — stays until the user acts ── */
           <div className="text-center py-6">
-            <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4">
-              <Check className="w-8 h-8 text-emerald-600" />
-            </div>
-            <h4 className="text-lg font-semibold text-slate-900 mb-2">Added to {done}</h4>
+            <GlassWellIcon gradient="from-emerald-400 to-teal-500" size="lg">
+              <Check className="w-7 h-7" />
+            </GlassWellIcon>
+            <h4 className="text-lg font-black text-slate-800 mt-4 mb-2">Added to {done}</h4>
             <p className="text-sm text-slate-500 mb-6">
               This place is now in your itinerary. Open the planner to schedule it, or keep exploring.
             </p>
@@ -818,14 +879,14 @@ function AddToTripModal({
               <button
                 type="button"
                 onClick={viewInPlanner}
-                className="px-4 py-3 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 active:bg-blue-800 transition shadow-sm btn-press"
+                className={`${BTN_VIOLET} px-4 py-3 rounded-2xl text-sm font-bold`}
               >
-                View in Trip Planner
+                <span className="relative">View in Trip Planner</span>
               </button>
               <button
                 type="button"
                 onClick={browseMore}
-                className="px-4 py-3 rounded-xl border border-slate-300 bg-white text-sm font-medium text-slate-700 hover:border-slate-400 hover:bg-slate-50 transition"
+                className={`${GLASS_SM} px-4 py-3 rounded-2xl text-sm font-bold text-slate-600 hover:bg-white/70 transition btn-press active:scale-95`}
               >
                 Browse more
               </button>
@@ -835,18 +896,18 @@ function AddToTripModal({
           /* ── Normal add-to-trip form ── */
           <>
             <p className="text-sm text-slate-500 mb-4">
-              Adding: <span className="font-medium text-slate-900">{listingName}</span>
+              Adding: <span className="font-bold text-slate-800">{listingName}</span>
             </p>
 
             {trips.length > 0 ? (
-              <div className="space-y-2 max-h-48 overflow-y-auto pr-1 mb-4">
+              <div className="space-y-2 max-h-48 overflow-y-auto pr-1 mb-4 scrollbar-hide">
                 {trips.map((t) => (
                   <label
                     key={t.trip_id}
-                    className={`flex items-start gap-3 p-3 rounded-xl border transition cursor-pointer ${
+                    className={`flex items-start gap-3 p-3.5 rounded-2xl transition cursor-pointer ${
                       selected === t.trip_id
-                        ? 'border-blue-500 bg-blue-50/60'
-                        : 'border-slate-200 hover:border-slate-300'
+                        ? 'bg-gradient-to-r from-indigo-50 to-violet-50 ring-2 ring-violet-400 shadow-[0_8px_18px_-8px_rgba(124,58,237,0.5)]'
+                        : `${NEU_SM} hover:bg-white/70`
                     } ${t.has ? 'opacity-60 cursor-not-allowed' : ''}`}
                   >
                     <input
@@ -856,15 +917,15 @@ function AddToTripModal({
                       checked={selected === t.trip_id}
                       disabled={t.has}
                       onChange={() => setSelected(t.trip_id)}
-                      className="mt-1 accent-blue-600"
+                      className="mt-1 accent-violet-600"
                     />
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-slate-900 truncate">{t.trip_name}</p>
-                      <p className="text-xs text-slate-500 mt-0.5">
+                      <p className="text-sm font-bold text-slate-800 truncate">{t.trip_name}</p>
+                      <p className="text-xs text-slate-500 mt-0.5 font-medium">
                         {t.start_date ? `${t.start_date} → ${t.end_date ?? '—'}` : 'No dates set'} ·{' '}
                         {t.count} place{t.count === 1 ? '' : 's'}
                       </p>
-                      {t.has && <p className="text-xs text-emerald-600 font-medium mt-0.5">Already in this trip</p>}
+                      {t.has && <p className="text-xs text-emerald-600 font-bold mt-0.5">Already in this trip</p>}
                     </div>
                   </label>
                 ))}
@@ -876,7 +937,7 @@ function AddToTripModal({
             <button
               type="button"
               onClick={() => setShowNew(!showNew)}
-              className="w-full text-sm font-medium text-blue-600 hover:text-blue-700 transition mb-3"
+              className="w-full text-sm font-bold text-violet-600 hover:text-violet-700 transition mb-3"
             >
               {showNew ? 'Hide new trip form' : 'Create a new trip'}
             </button>
@@ -885,36 +946,36 @@ function AddToTripModal({
               <div className="space-y-3 mb-4">
                 <div>
                   <div className="flex items-baseline justify-between mb-1.5">
-                    <label className="block text-sm font-medium text-slate-700">Trip name</label>
-                    <span className="text-xs text-slate-400">{newName.length}/100</span>
+                    <label className={LBL}>Trip name</label>
+                    <span className="text-[11px] font-semibold text-slate-400">{newName.length}/100</span>
                   </div>
                   <input
                     value={newName}
                     onChange={(e) => setNewName(e.target.value)}
                     maxLength={100}
                     placeholder="e.g., Summer in La Union"
-                    className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-600 focus:border-blue-600 outline-none transition"
+                    className={FIELD}
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Start date</label>
+                    <label className={LBL}>Start date</label>
                     <input
                       type="date"
                       value={newStart}
                       max={newEnd || undefined}
                       onChange={(e) => setNewStart(e.target.value)}
-                      className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-600 focus:border-blue-600 outline-none transition"
+                      className={FIELD_SM}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1.5">End date</label>
+                    <label className={LBL}>End date</label>
                     <input
                       type="date"
                       value={newEnd}
                       min={newStart || undefined}
                       onChange={(e) => setNewEnd(e.target.value)}
-                      className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-600 focus:border-blue-600 outline-none transition"
+                      className={FIELD_SM}
                     />
                   </div>
                 </div>
@@ -925,7 +986,7 @@ function AddToTripModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 py-3 rounded-xl border border-slate-300 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50 transition"
+                className={`${GLASS_SM} flex-1 py-3 rounded-2xl text-sm font-bold text-slate-600 hover:bg-white/70 transition btn-press active:scale-95`}
               >
                 Cancel
               </button>
@@ -933,9 +994,9 @@ function AddToTripModal({
                 type="button"
                 onClick={handleAdd}
                 disabled={busy || (!selected && !(showNew && newName.trim()))}
-                className="flex-1 py-3 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 active:bg-blue-800 transition shadow-sm disabled:opacity-60"
+                className={`${BTN_VIOLET} flex-1 py-3 rounded-2xl text-sm font-bold disabled:opacity-60`}
               >
-                {busy ? 'Adding…' : 'Add to trip'}
+                <span className="relative">{busy ? 'Adding…' : 'Add to trip'}</span>
               </button>
             </div>
           </>
@@ -1001,71 +1062,71 @@ function BookingModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 bg-slate-950/40 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
+      <div className={`${NEU} rounded-3xl p-6 max-w-md w-full`} onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-slate-900">Book now</h3>
+          <h3 className="text-lg font-black text-slate-800">Book now</h3>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition">
             <Close className="w-5 h-5" />
           </button>
         </div>
-        <p className="text-sm text-slate-500 mb-4">Booking: <span className="font-medium text-slate-900">{listingName}</span></p>
+        <p className="text-sm text-slate-500 mb-4">Booking: <span className="font-bold text-slate-800">{listingName}</span></p>
 
         {success ? (
           <div className="text-center py-8">
-            <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4">
-              <Check className="w-8 h-8 text-emerald-600" />
-            </div>
-            <h4 className="text-lg font-semibold text-slate-900 mb-2">Booking request sent!</h4>
+            <GlassWellIcon gradient="from-emerald-400 to-teal-500" size="lg">
+              <Check className="w-7 h-7" />
+            </GlassWellIcon>
+            <h4 className="text-lg font-black text-slate-800 mt-4 mb-2">Booking request sent!</h4>
             <p className="text-sm text-slate-500">The owner will review your request and get back to you soon.</p>
           </div>
         ) : (
           <>
-            {err && <p className="bg-red-50 text-red-700 border border-red-200 rounded-xl px-4 py-3 text-sm mb-4">{err}</p>}
+            {err && <p className="bg-rose-50/90 text-rose-700 border border-rose-200 rounded-2xl px-4 py-3 text-sm font-semibold mb-4">{err}</p>}
 
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Check-in</label>
+                  <label className={LBL}>Check-in</label>
                   <input
                     type="date"
                     value={checkIn}
                     onChange={(e) => setCheckIn(e.target.value)}
                     min={new Date().toISOString().slice(0, 10)}
-                    className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-600 focus:border-blue-600 outline-none transition"
+                    className={FIELD_SM}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Check-out</label>
+                  <label className={LBL}>Check-out</label>
                   <input
                     type="date"
                     value={checkOut}
                     onChange={(e) => setCheckOut(e.target.value)}
                     min={checkIn || new Date().toISOString().slice(0, 10)}
-                    className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-600 focus:border-blue-600 outline-none transition"
+                    className={FIELD_SM}
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Guests</label>
+                <label className={LBL}>Guests</label>
                 <input
                   type="number"
                   min="1"
                   max="20"
                   value={guests}
                   onChange={(e) => setGuests(parseInt(e.target.value) || 1)}
-                  className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-600 focus:border-blue-600 outline-none transition"
+                  className={FIELD}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Special requests (optional)</label>
+                <label className={LBL}>Special requests (optional)</label>
                 <textarea
                   value={requests}
                   onChange={(e) => setRequests(e.target.value)}
                   rows={3}
                   maxLength={500}
                   placeholder="e.g., Early check-in, specific room preference"
-                  className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-600 focus:border-blue-600 outline-none transition"
+                  className={`${FIELD} resize-none`}
                 />
               </div>
             </div>
@@ -1073,16 +1134,16 @@ function BookingModal({
             <div className="flex gap-3 mt-6">
               <button
                 onClick={onClose}
-                className="flex-1 py-3 rounded-xl border border-slate-300 bg-white text-sm font-medium text-slate-700 hover:border-slate-400 transition"
+                className={`${GLASS_SM} flex-1 py-3 rounded-2xl text-sm font-bold text-slate-600 hover:bg-white/70 transition btn-press active:scale-95`}
               >
                 Cancel
               </button>
               <button
                 onClick={handleBook}
                 disabled={busy || !checkIn || !checkOut}
-                className="flex-1 py-3 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 active:bg-blue-800 transition shadow-sm disabled:opacity-60"
+                className={`${BTN_VIOLET} flex-1 py-3 rounded-2xl text-sm font-bold disabled:opacity-60`}
               >
-                {busy ? 'Submitting…' : 'Submit request'}
+                <span className="relative">{busy ? 'Submitting…' : 'Submit request'}</span>
               </button>
             </div>
           </>
@@ -1173,54 +1234,58 @@ function ReviewForm({ listingId, onSubmitted }: { listingId: string; onSubmitted
   if (!checked) return null;
   if (!userId) {
     return (
-      <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+      <section className={`${GLASS} rounded-3xl p-7`}>
         <SectionHeader title="Write a review" helper="Sign in required" />
         <p className="text-sm text-slate-500">
-          <Link href="/login" className="text-blue-600 underline hover:text-blue-700">Sign in</Link> to share your experience at this place.
+          <Link href="/login" className="text-violet-600 font-bold underline hover:text-violet-700">Sign in</Link> to share your experience at this place.
         </p>
       </section>
     );
   }
 
   return (
-    <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+    <section className={`${GLASS} rounded-3xl p-7`}>
       <SectionHeader title="Write a review" helper="One review per traveler (BR-011)" />
-      {err && <p className="bg-red-50 text-red-700 border border-red-200 rounded-xl px-4 py-3 text-sm mb-4">{err}</p>}
-      {msg && <p className="bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl px-4 py-3 text-sm mb-4">{msg}</p>}
+      {err && <p className="bg-rose-50/90 text-rose-700 border border-rose-200 rounded-2xl px-4 py-3 text-sm font-semibold mb-4">{err}</p>}
+      {msg && <p className="bg-emerald-50/90 text-emerald-700 border border-emerald-200 rounded-2xl px-4 py-3 text-sm font-semibold mb-4">{msg}</p>}
       <form onSubmit={submit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">Your rating</label>
-          <div className="flex justify-center gap-2">
+          <label className={LBL}>Your rating</label>
+          <div className="flex justify-center gap-2.5">
             {[1, 2, 3, 4, 5].map((n) => (
               <button
                 key={n}
                 type="button"
                 onClick={() => setRating(n)}
                 aria-label={`Rate ${n} stars`}
-                className={`p-1.5 rounded-xl transition hover:scale-110 ${n <= rating ? 'text-amber-500 bg-amber-50' : 'text-slate-300 hover:text-slate-400'}`}
+                className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-200 active:scale-90 ${
+                  n <= rating
+                    ? 'bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-[0_10px_22px_-8px_rgba(245,158,11,0.8),inset_0_1px_0_rgba(255,255,255,0.5)] scale-105'
+                    : `${INSET} text-slate-300 hover:text-slate-400`
+                }`}
               >
-                <Star className="w-7 h-7" filled={n <= rating} />
+                <Star className="w-6 h-6" filled={n <= rating} />
               </button>
             ))}
           </div>
         </div>
         <div>
           <div className="flex items-baseline justify-between mb-1.5">
-            <label className="block text-sm font-medium text-slate-700">Title (optional)</label>
-            <span className="text-xs text-slate-400">{title.length}/50</span>
+            <label className={LBL}>Title (optional)</label>
+            <span className="text-[11px] font-semibold text-slate-400">{title.length}/50</span>
           </div>
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             maxLength={50}
             placeholder="A short headline"
-            className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-600 focus:border-blue-600 outline-none transition"
+            className={FIELD}
           />
         </div>
         <div>
           <div className="flex items-baseline justify-between mb-1.5">
-            <label className="block text-sm font-medium text-slate-700">Your review</label>
-            <span className="text-xs text-slate-400">{text.length}/300</span>
+            <label className={LBL}>Your review</label>
+            <span className="text-[11px] font-semibold text-slate-400">{text.length}/300</span>
           </div>
           <textarea
             required
@@ -1229,35 +1294,35 @@ function ReviewForm({ listingId, onSubmitted }: { listingId: string; onSubmitted
             rows={4}
             maxLength={300}
             placeholder="What was your experience like? Would you recommend this place?"
-            className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-600 focus:border-blue-600 outline-none transition"
+            className={`${FIELD} resize-none`}
           />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Photo (optional)</label>
+            <label className={LBL}>Photo (optional)</label>
             <input
               type="file"
               accept="image/*"
               onChange={(e) => setPhoto(e.target.files?.[0] ?? null)}
-              className="block w-full text-sm text-slate-500 file:mr-3 file:px-4 file:py-2 file:rounded-lg file:border-0 file:bg-blue-600 file:text-white file:cursor-pointer"
+              className="block w-full text-sm text-slate-500 file:mr-3 file:px-4 file:py-2.5 file:rounded-xl file:border-0 file:bg-gradient-to-r file:from-indigo-500 file:to-violet-500 file:text-white file:font-bold file:cursor-pointer file:shadow-[0_8px_18px_-6px_rgba(124,58,237,0.7)] file:hover:brightness-110 file:transition"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Visit date (optional)</label>
+            <label className={LBL}>Visit date (optional)</label>
             <input
               type="date"
               value={visitDate}
               onChange={(e) => setVisitDate(e.target.value)}
-              className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-600 focus:border-blue-600 outline-none transition"
+              className={FIELD_SM}
             />
           </div>
         </div>
         <button
           type="submit"
           disabled={busy}
-          className="w-full py-3 rounded-xl bg-blue-600 text-white font-medium hover:bg-blue-700 active:bg-blue-800 transition shadow-sm disabled:opacity-60"
+          className={`${BTN_VIOLET} w-full py-3.5 rounded-2xl font-bold disabled:opacity-60`}
         >
-          {busy ? 'Publishing…' : 'Publish review'}
+          <span className="relative">{busy ? 'Publishing…' : 'Publish review'}</span>
         </button>
       </form>
     </section>
