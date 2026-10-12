@@ -1,13 +1,13 @@
-// app/src/components/dashboard/PlanTab.tsx — MISSION BOARD (geo-C1)
+// app/src/components/dashboard/PlanTab.tsx — MISSION BOARD v3: GRID + ROADMAP (geo-C4)
 'use client';
-import { useEffect, useRef, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { Fragment, useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import {
-  NEU, NEU_SM, INSET, GLASS, GLASS_SM, SHEEN, GRAD, GRAD_TEXT, GLOSS, PILL_ACTIVE, FIELD, INPUT,
-  BTN_PRIMARY, BTN_GHOST, BTN_DANGER, FLOAT_SHADOW,
-  Star, Chevron, ChevronDown, PlusIcon, MapIcon, CloseIcon, EditIcon, TrashIcon, SparkleIcon, RouteIcon,
-  GlassWellIcon, AccentBar, SummaryTile, EmptyBox, Link,
+  INSET, GLASS, GLASS_SM, GRAD, GLOSS, PILL_ACTIVE, INPUT,
+  BTN_PRIMARY, BTN_GHOST, BTN_DANGER,
+  Star, ChevronDown, PlusIcon, MapIcon, CloseIcon, EditIcon, TrashIcon, SparkleIcon, RouteIcon,
+  GlassWellIcon, EmptyBox, Link,
   getTripStatus, fmtDate, extractStopLabel, statusPill,
   type TripItem, type TripData, type ExploreCard, type ReviewMap,
 } from '@/components/dashboard/kit';
@@ -16,6 +16,9 @@ const TIME_OPTIONS = ['07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:
 const SLOT_BASE = ['09:00', '13:00', '18:00'];
 const SLOT_NAMES = ['Morning', 'Afternoon', 'Evening'];
 const SLOT_STRIPE = ['from-sky-400 to-cyan-400', 'from-amber-400 to-orange-400', 'from-indigo-400 to-violet-500'];
+const STOP_LINE = ['bg-violet-400', 'bg-sky-400', 'bg-amber-400', 'bg-emerald-400', 'bg-pink-400', 'bg-indigo-400', 'bg-teal-400', 'bg-rose-400'];
+const STOP_BORDER = ['border-violet-500', 'border-sky-500', 'border-amber-500', 'border-emerald-500', 'border-pink-500', 'border-indigo-500', 'border-teal-500', 'border-rose-500'];
+const STOP_FILL = ['bg-violet-500', 'bg-sky-500', 'bg-amber-500', 'bg-emerald-500', 'bg-pink-500', 'bg-indigo-500', 'bg-teal-500', 'bg-rose-500'];
 const MODAL_SURF = 'bg-white shadow-[0_28px_70px_-18px_rgba(15,23,42,0.6)] ring-1 ring-slate-900/10';
 const SHEET_SURF = 'bg-white shadow-[-32px_0_80px_-24px_rgba(15,23,42,0.45)] ring-1 ring-slate-900/10';
 const CARD = 'bg-white/85 border border-white/90 shadow-[0_6px_18px_rgba(110,120,190,0.14)]';
@@ -47,8 +50,9 @@ function matchesStop(x: any, label: string): boolean {
   return words.every((w) => hs.has(w) || hw.some((h) => h.includes(w) || w.includes(h)));
 }
 const bucketOf = (time: string | null, fallback = 0) => { if (!time) return fallback; const h = parseInt(time.slice(0, 2), 10); return h < 12 ? 0 : h < 17 ? 1 : 2; };
+const isTouchNarrow = () => typeof window !== 'undefined' && window.innerWidth < 1024;
 
-if (typeof window !== 'undefined') console.log('[PlanTab] build=geo-C1');
+if (typeof window !== 'undefined') console.log('[PlanTab] build=geo-C4');
 
 type Props = {
   userId: string | null; trips: TripData[]; refreshTrips: () => Promise<void> | void;
@@ -59,7 +63,6 @@ type Props = {
 
 export default function PlanTab({ userId, trips, refreshTrips, explore, schedMap, allDests, tripReviewMap, onReviewed }: Props) {
   const supabase = createClient();
-  const router = useRouter();
   const searchParams = useSearchParams();
 
   const [selectedTripId, setSelectedTripId] = useState<string | null>(null);
@@ -90,8 +93,11 @@ export default function PlanTab({ userId, trips, refreshTrips, explore, schedMap
   const [showNoteModal, setShowNoteModal] = useState<{ afterKey: string; date: string } | null>(null);
   const [noteText, setNoteText] = useState('');
   const [copied, setCopied] = useState(false);
+  const [flashDay, setFlashDay] = useState<string | null>(null);
   const plannerScrolledRef = useRef(false);
   const diagRef = useRef(false);
+  const dayRefs = useRef<Record<string, HTMLElement | null>>({});
+  const flashTimerRef = useRef<number | null>(null);
 
   // ---- derived ----
   const selectedTrip = trips.find((t) => t.trip_id === selectedTripId) ?? trips[0] ?? null;
@@ -149,6 +155,7 @@ export default function PlanTab({ userId, trips, refreshTrips, explore, schedMap
   function getItemStop(item: TripItem): string | null { if (!item.destination_name && !item.region_country && !item.destBlob) return null; for (const s of tripStops) { if (matchesStop(item, s.label)) return s.label; } return null; }
   function getStopForDate(date: string): string | null { if (!selectedTrip?.start_date || !tripStops.length) return null; const start = new Date(selectedTrip.start_date + 'T00:00:00'); const target = new Date(date + 'T00:00:00'); const off = Math.floor((target.getTime() - start.getTime()) / 86400000); let cursor = 0; for (const s of tripStops) { const n = s.days || 1; if (off >= cursor && off < cursor + n) return s.label; cursor += n; } return null; }
   function stopItemCount(label: string) { return (selectedTrip?.items ?? []).filter((i) => matchesStop(i, label)).length; }
+  function stopIdxFor(date: string): number { const stop = getStopForDate(date); const i = stop ? tripStops.findIndex((s) => s.label === stop) : -1; return i >= 0 ? i : 0; }
   function pickSlotTimes(type: string | null, listingId: string): string[] { if (type === 'Restaurant') return ['12:00:00', '18:00:00']; const base = ['09:00:00', '13:00:00']; const sched = schedMap[listingId]; if (!sched) return base; const ok = base.filter((s) => sched.open <= s.slice(0, 5) && s.slice(0, 5) < sched.close); return ok.length ? ok : base; }
   function findFreeTime(date: string, slotIdx: number, allowed: string[], excludeKey?: string): string | null {
     const others = dayPlaces(date).filter((i) => i.key !== excludeKey).map((i) => toMin((i.start_time ?? '').slice(0, 5))).filter((n) => !isNaN(n));
@@ -229,6 +236,7 @@ export default function PlanTab({ userId, trips, refreshTrips, explore, schedMap
     if (!time) { setPlannerErr('No free time slot there — times must stay 1 hour apart.'); return; }
     const { error } = await supabase.from('trip_items').update({ planned_date: date, start_time: time, sequence_no: nextSeq(date) }).eq('trip_item_id', dbId(item));
     if (error) setPlannerErr(error.message); else await refreshTrips();
+    if (picking && isTouchNarrow()) setSheetOpen(false);
     setPicking(null);
   }
   async function placePool(listingId: string, date: string, slotIdx: number) {
@@ -241,6 +249,7 @@ export default function PlanTab({ userId, trips, refreshTrips, explore, schedMap
     const time = findFreeTime(date, slotIdx, pickSlotTimes(listing?.listing_type ?? null, listingId));
     if (!time) { setPlannerErr('No free time slot there — times must stay 1 hour apart.'); return; }
     await addItem(listingId, { date, time, seq: nextSeq(date) });
+    if (picking && isTouchNarrow()) setSheetOpen(false);
     setPicking(null);
   }
   async function addNoteToDay(date: string) {
@@ -354,6 +363,13 @@ export default function PlanTab({ userId, trips, refreshTrips, explore, schedMap
     setPicking({ date, slot: si });
     openPool('pool');
   }
+  function focusDay(date: string) {
+    const el = dayRefs.current[date];
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setFlashDay(date);
+    if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current);
+    flashTimerRef.current = window.setTimeout(() => setFlashDay((d) => (d === date ? null : d)), 1400);
+  }
 
   // ---- effects ----
   useEffect(() => { const fromUrl = searchParams.get('trip'); const fromSession = typeof window !== 'undefined' ? window.sessionStorage.getItem('tm-open-trip') : null; const t = fromUrl ?? fromSession; if (t && trips.some((x) => x.trip_id === t)) { setSelectedTripId(t); if (fromSession && typeof window !== 'undefined') window.sessionStorage.removeItem('tm-open-trip'); } }, [trips, searchParams]);
@@ -367,8 +383,9 @@ export default function PlanTab({ userId, trips, refreshTrips, explore, schedMap
     console.table(explore.slice(0, 10).map((l) => ({ name: l.name, destination_name: l.destination?.destination_name ?? '(null)', region_country: l.destination?.region_country ?? '(null)', geo: geoOf(l).slice(0, 80) })));
     console.groupEnd();
   }, [stopHasNoCatalogMatches, tripStops, explore]);
+  useEffect(() => () => { if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current); }, []);
 
-  // ---- place card (day columns) ----
+  // ---- place card (bigger) ----
   function PlaceCard({ it, date }: { it: TripItem; date: string }) {
     const si = bucketOf(it.start_time, 0);
     return (
@@ -379,18 +396,21 @@ export default function PlanTab({ userId, trips, refreshTrips, explore, schedMap
         onDragLeave={() => setDragOverCard((k) => (k === it.key ? null : k))}
         onDrop={(e) => { e.preventDefault(); e.stopPropagation(); const p = readPayload(e); if (p?.k === 'item' && p.key !== it.key) swapItems(p.key, it.key); else if (p?.k === 'pool') placePool(p.listing, date, freeSlotIndex(date) === -1 ? si : freeSlotIndex(date)); setDragOverCard(null); setDragOverDay(null); setDragKey(null); }}
         title="Drag to another day to move · drop on a card to swap · drag to Inbox to unschedule"
-        className={`group relative rounded-xl ${CARD} pl-3.5 pr-2 py-2.5 mb-2 last:mb-0 cursor-grab active:cursor-grabbing transition hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(110,120,190,0.22)] ${dragKey === it.key ? 'opacity-40 ring-2 ring-violet-400' : ''} ${dragOverCard === it.key ? 'ring-2 ring-violet-400' : ''}`}>
-        <span className={`absolute left-0 top-2 bottom-2 w-1 rounded-full bg-gradient-to-b ${SLOT_STRIPE[si]}`} />
-        <div className="flex items-center gap-2">
+        className={`group relative rounded-xl ${CARD} pl-4 pr-2 py-3 mb-2 last:mb-0 cursor-grab active:cursor-grabbing transition hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(110,120,190,0.22)] ${dragKey === it.key ? 'opacity-40 ring-2 ring-violet-400' : ''} ${dragOverCard === it.key ? 'ring-2 ring-violet-400' : ''}`}>
+        <span className={`absolute left-0 top-2.5 bottom-2.5 w-1.5 rounded-r-full bg-gradient-to-b ${SLOT_STRIPE[si]}`} />
+        <div className="flex items-center gap-2.5">
+          <span className="shrink-0 text-slate-300 group-hover:text-slate-400 transition" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><circle cx="9" cy="6" r="1.6" /><circle cx="15" cy="6" r="1.6" /><circle cx="9" cy="12" r="1.6" /><circle cx="15" cy="12" r="1.6" /><circle cx="9" cy="18" r="1.6" /><circle cx="15" cy="18" r="1.6" /></svg>
+          </span>
           <div className="flex-1 min-w-0">
-            <Link href={`/listing/${it.listing_id}`} draggable={false} className="block font-black text-slate-800 text-sm truncate hover:text-violet-700 transition">{it.name}</Link>
-            <p className="text-[10px] font-semibold text-slate-500 truncate">{SLOT_NAMES[si]}{it.rating != null ? ` · ★ ${Number(it.rating).toFixed(1)}` : ''}{it.destination_name ? ` · ${it.destination_name}` : ''}</p>
+            <Link href={`/listing/${it.listing_id}`} draggable={false} className="block font-black text-slate-800 text-base truncate hover:text-violet-700 transition">{it.name}</Link>
+            <p className="text-[11px] font-semibold text-slate-500 truncate">{SLOT_NAMES[si]}{it.rating != null ? ` · ★ ${Number(it.rating).toFixed(1)}` : ''}{it.destination_name ? ` · ${it.destination_name}` : ''}</p>
           </div>
-          <select value={(it.start_time ?? '09:00:00').slice(0, 5)} onChange={(e) => changeItemTime(it.key, e.target.value)} onClick={(e) => e.stopPropagation()} draggable={false} aria-label={`Edit time for ${it.name}`} className={`shrink-0 w-[4.7rem] ${selectCls}`}>
+          <select value={(it.start_time ?? '09:00:00').slice(0, 5)} onChange={(e) => changeItemTime(it.key, e.target.value)} onClick={(e) => e.stopPropagation()} draggable={false} aria-label={`Edit time for ${it.name}`} className={`shrink-0 w-[5rem] ${selectCls}`}>
             {!TIME_OPTIONS.includes((it.start_time ?? '09:00:00').slice(0, 5)) && (<option value={(it.start_time ?? '09:00:00').slice(0, 5)}>{fmtTime(it.start_time)}</option>)}
             {TIME_OPTIONS.map((opt) => (<option key={opt} value={opt}>{fmtTime(`${opt}:00`)}</option>))}
           </select>
-          <button type="button" draggable={false} onClick={() => removeItem(it)} aria-label={`Remove ${it.name}`} className="w-7 h-7 shrink-0 rounded-lg text-slate-300 hover:text-rose-600 hover:bg-rose-50/80 transition items-center justify-center hidden group-hover:flex"><CloseIcon className="w-3.5 h-3.5" /></button>
+          <button type="button" draggable={false} onClick={() => removeItem(it)} aria-label={`Remove ${it.name}`} className="w-8 h-8 shrink-0 rounded-lg text-slate-400 opacity-60 group-hover:opacity-100 focus:opacity-100 hover:text-rose-600 hover:bg-rose-50/80 transition flex items-center justify-center"><CloseIcon className="w-4 h-4" /></button>
         </div>
       </div>
     );
@@ -403,34 +423,37 @@ export default function PlanTab({ userId, trips, refreshTrips, explore, schedMap
         .tm-pop-c { animation: tmPopC .45s cubic-bezier(.22,.9,.32,1) both; }
         @keyframes tmSheetC { from { transform: translateX(28px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
         .tm-sheet-c { animation: tmSheetC .3s cubic-bezier(.22,.9,.32,1) both; }
-        .tm-ticket { --notch: 10px; mask-image: radial-gradient(circle at left center, transparent var(--notch), black calc(var(--notch) + 1px)), radial-gradient(circle at right center, transparent var(--notch), black calc(var(--notch) + 1px)); mask-composite: intersect; -webkit-mask-image: radial-gradient(circle at left center, transparent var(--notch), black calc(var(--notch) + 1px)), radial-gradient(circle at right center, transparent var(--notch), black calc(var(--notch) + 1px)); -webkit-mask-composite: source-in; }
+        .tm-ticket { --notch: 12px; mask-image: radial-gradient(circle at left center, transparent var(--notch), black calc(var(--notch) + 1px)), radial-gradient(circle at right center, transparent var(--notch), black calc(var(--notch) + 1px)); mask-composite: intersect; -webkit-mask-image: radial-gradient(circle at left center, transparent var(--notch), black calc(var(--notch) + 1px)), radial-gradient(circle at right center, transparent var(--notch), black calc(var(--notch) + 1px)); -webkit-mask-composite: source-in; }
       `}</style>
 
-      {/* Toolbar: filters + ticket-stub trip switcher */}
+      {/* Toolbar */}
       <div className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <div className={`${GLASS} rounded-2xl p-1 flex gap-1`}>
             {(['active', 'upcoming', 'ongoing', 'finished'] as const).map((f) => (
-              <button key={f} type="button" onClick={() => setTripFilter(f)} className={`px-3 py-1.5 rounded-xl text-[11px] font-black tracking-wide transition active:scale-95 ${tripFilter === f ? PILL_ACTIVE : 'text-slate-500 hover:text-violet-600'}`}>
+              <button key={f} type="button" onClick={() => setTripFilter(f)} className={`px-3.5 py-2 rounded-xl text-[11px] font-black tracking-wide transition active:scale-95 ${tripFilter === f ? PILL_ACTIVE : 'text-slate-500 hover:text-violet-600'}`}>
                 <span className="relative">{f === 'active' ? `Active ${trips.filter((t) => getTripStatus(t) !== 'finished').length}` : `${f.charAt(0).toUpperCase() + f.slice(1)} ${trips.filter((t) => getTripStatus(t) === f).length}`}</span>
               </button>
             ))}
           </div>
           <button type="button" onClick={() => setShowTripModal(true)} className={`ml-auto ${BTN_PRIMARY} px-4 py-2.5 text-xs`}><span className="relative flex items-center gap-1.5"><PlusIcon className="w-4 h-4" />New trip</span></button>
         </div>
+
+        {/* Trip switcher — BIGGER, GRID */}
         {trips.length > 0 && (
-          <div className="flex gap-2.5 overflow-x-auto pb-2 -mx-1 px-1 snap-x snap-mandatory">
-            {filteredTrips.length === 0 ? (<p className="text-sm text-slate-500 px-2 py-3 font-medium">No {tripFilter === 'active' ? 'active ' : `${tripFilter} `}trips yet.</p>) : filteredTrips.map((t) => {
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[24rem] overflow-y-auto pr-1">
+            {filteredTrips.length === 0 ? (<p className="col-span-full text-sm text-slate-500 px-2 py-3 font-medium">No {tripFilter === 'active' ? 'active ' : `${tripFilter} `}trips yet.</p>) : filteredTrips.map((t) => {
               const sel = selectedTrip?.trip_id === t.trip_id; const st = getTripStatus(t); const nr = tripNeedsReview(t); const fr = tripFullyReviewed(t); const info = tripReviewInfo(t);
               return (
-                <button key={t.trip_id} type="button" onClick={() => setSelectedTripId(t.trip_id)} className={`tm-ticket shrink-0 snap-start text-left px-5 py-3 min-w-[200px] transition-all duration-300 ${sel ? 'bg-white shadow-[0_14px_34px_-12px_rgba(124,58,237,0.55)] ring-2 ring-violet-400/70' : fr ? 'bg-white/50 opacity-60 saturate-[.7] hover:opacity-90' : 'bg-white/80 shadow-[0_8px_22px_-8px_rgba(110,120,190,0.4)] hover:-translate-y-0.5'}`}>
+                <button key={t.trip_id} type="button" onClick={() => setSelectedTripId(t.trip_id)} className={`tm-ticket text-left px-6 py-5 transition-all duration-300 ${sel ? 'bg-white shadow-[0_16px_40px_-12px_rgba(124,58,237,0.55)] ring-2 ring-violet-400/70' : fr ? 'bg-white/50 opacity-60 saturate-[.7] hover:opacity-90' : 'bg-white/80 shadow-[0_10px_26px_-8px_rgba(110,120,190,0.4)] hover:-translate-y-0.5'}`}>
                   <div className="flex items-center justify-between gap-2">
-                    <p className={`font-black truncate text-sm ${fr && !sel ? 'text-slate-500' : 'text-slate-800'}`}>{t.trip_name ?? `Trip ${t.trip_id}`}</p>
-                    <span className={`shrink-0 w-2 h-2 rounded-full ${st === 'ongoing' ? 'bg-sky-500 animate-pulse' : st === 'finished' ? 'bg-slate-400' : 'bg-emerald-500'}`} />
+                    <p className={`font-black truncate text-base ${fr && !sel ? 'text-slate-500' : 'text-slate-800'}`}>{t.trip_name ?? `Trip ${t.trip_id}`}</p>
+                    <span className={`shrink-0 w-2.5 h-2.5 rounded-full ${st === 'ongoing' ? 'bg-sky-500 animate-pulse' : st === 'finished' ? 'bg-slate-400' : 'bg-emerald-500'}`} />
                   </div>
-                  <p className="text-[10px] text-slate-500 font-bold mt-0.5 truncate">{fmtDate(t.start_date)} → {fmtDate(t.end_date)} · {t.items.filter((i) => i.listing_type !== 'Note').length} places</p>
-                  {nr && <p className="mt-1 text-[10px] font-black text-amber-600">{info.total - info.reviewed} to review</p>}
-                  {fr && <p className="mt-1 text-[10px] font-bold text-slate-400">✓ Reviewed</p>}
+                  <p className="text-xs text-slate-500 font-bold mt-1.5 truncate">{fmtDate(t.start_date)} → {fmtDate(t.end_date)}</p>
+                  <p className="text-[11px] text-slate-400 font-bold mt-0.5">{t.items.filter((i) => i.listing_type !== 'Note').length} places · {Array.isArray(t.stops) ? t.stops.length : 0} stops</p>
+                  {nr && <p className="mt-2 inline-block px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-black">{info.total - info.reviewed} to review</p>}
+                  {fr && <p className="mt-2 text-[11px] font-bold text-slate-400">✓ Reviewed</p>}
                 </button>
               );
             })}
@@ -439,7 +462,7 @@ export default function PlanTab({ userId, trips, refreshTrips, explore, schedMap
       </div>
 
       {userId && needsReviewCount > 0 && (
-        <Link href="/my-trips" className={`group flex items-center gap-3 p-4 rounded-2xl bg-amber-50/80 border border-amber-200/70 hover:bg-amber-50 transition`}>
+        <Link href="/my-trips" className="group flex items-center gap-3 p-4 rounded-2xl bg-amber-50/80 border border-amber-200/70 hover:bg-amber-50 transition">
           <GlassWellIcon gradient="from-amber-400 to-orange-500"><Star className="w-5 h-5" /></GlassWellIcon>
           <span className="flex-1 text-sm font-bold text-amber-700">{needsReviewCount} finished trip{needsReviewCount === 1 ? '' : 's'} waiting for your review — rate the places you visited!</span>
           <span className="text-xs font-black text-amber-600 whitespace-nowrap">My trips →</span>
@@ -458,12 +481,12 @@ export default function PlanTab({ userId, trips, refreshTrips, explore, schedMap
           <div className="text-center mb-8">
             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-violet-600 mb-2">Boarding pass · blank</p>
             <h3 className="text-3xl font-black tracking-tight text-slate-800">Where to next?</h3>
-            <p className="text-slate-500 mt-2">Name it, date it, and the day columns appear ready to fill.</p>
+            <p className="text-slate-500 mt-2">Name it, date it, and the day grid + roadmap appear ready to fill.</p>
           </div>
           <form onSubmit={handleStartCreate} className="grid grid-cols-1 md:grid-cols-[1fr_160px_160px_auto] gap-3">
             <div><input value={startName} onChange={(e) => setStartName(e.target.value)} maxLength={100} placeholder="Trip name — e.g., Japan Spring Adventure" className={INPUT} /><p className="text-[10px] text-slate-400 mt-1 text-right font-semibold">{startName.length}/100</p></div>
-            <input type="date" value={startDate} max={endDate || undefined} onChange={(e) => setStartDate(e.target.value)} className={`${INPUT} [color-scheme:light]`} aria-label="Start date" />
-            <input type="date" value={endDate} min={startDate || undefined} onChange={(e) => setEndDate(e.target.value)} className={`${INPUT} [color-scheme:light]`} aria-label="End date" />
+            <input type="date" value={startDate} max={endDate || undefined} onChange={(e) => setStartDate(e.target.value)} className={INPUT} aria-label="Start date" />
+            <input type="date" value={endDate} min={startDate || undefined} onChange={(e) => setEndDate(e.target.value)} className={INPUT} aria-label="End date" />
             <button type="submit" disabled={startBusy} className={`${BTN_PRIMARY} px-6 py-3 text-sm disabled:opacity-60`}><span className="relative">{startBusy ? 'Creating…' : 'Create trip'}</span></button>
           </form>
           {plannerErr && <p className={`mt-4 ${GLASS} border-rose-200/70 text-rose-700 rounded-2xl px-4 py-2.5 text-sm font-semibold`}>{plannerErr}</p>}
@@ -478,7 +501,6 @@ export default function PlanTab({ userId, trips, refreshTrips, explore, schedMap
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border backdrop-blur-md ${statusPill(tripStatus!)}`}>{tripStatus}</span>
                     {tripStatus === 'ongoing' && liveDayIndex && (<span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200/70"><span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse mr-1" />Day {liveDayIndex}{tripDays ? `/${tripDays}` : ''}</span>)}
-                    {tripStatus !== 'finished' && (<Link href={`/trip?trip=${selectedTrip.trip_id}`} className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-violet-50 text-violet-700 border border-violet-200/70 hover:bg-violet-100 transition">Cockpit →</Link>)}
                   </div>
                   <h3 className="mt-1 text-lg md:text-xl font-black tracking-tight text-slate-800 truncate leading-tight">{selectedTrip.trip_name ?? `Trip ${selectedTrip.trip_id}`}</h3>
                 </div>
@@ -492,128 +514,187 @@ export default function PlanTab({ userId, trips, refreshTrips, explore, schedMap
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
-                  <button type="button" onClick={autoFill} disabled={planning} title="Fill empty slots from the inbox — arranged days untouched" className={`${BTN_PRIMARY} px-3 py-2 text-[11px] disabled:opacity-60`}><span className="relative flex items-center gap-1"><SparkleIcon className="w-3.5 h-3.5" />{planning ? '…' : 'Auto-fill'}</span></button>
-                  <button type="button" onClick={() => setShowReplanConfirm(true)} disabled={planning} title="Wipe & rebuild the whole schedule" className={`${BTN_GHOST} px-2.5 py-2 text-[11px]`}>Re-plan</button>
-                  <button type="button" onClick={copyItinerary} title="Copy itinerary as text" className={`${BTN_GHOST} px-2.5 py-2 text-[11px]`}>{copied ? '✓' : 'Copy'}</button>
-                  <button type="button" onClick={() => openPool('route')} title="Route, stops & dates" className={`${BTN_GHOST} px-2.5 py-2 text-[11px]`}><span className="flex items-center gap-1"><RouteIcon className="w-3.5 h-3.5" />Route</span></button>
-                  <button type="button" onClick={() => setShowEditTripModal(true)} title="Edit name & dates" className={`${BTN_GHOST} px-2.5 py-2 text-[11px]`}><EditIcon className="w-3.5 h-3.5" /></button>
-                  <button type="button" onClick={() => setShowDeleteConfirm(selectedTrip.trip_id)} title="Delete trip" className={`${BTN_GHOST} px-2.5 py-2 text-[11px] text-rose-500 hover:text-rose-600`}><TrashIcon className="w-3.5 h-3.5" /></button>
-                  {tripStatus === 'finished' && pendingReviewCount > 0 && (<button type="button" onClick={() => setShowReviewTripModal(true)} className={`${BTN_PRIMARY} px-3 py-2 text-[11px]`} style={{ backgroundImage: 'linear-gradient(to right,#f59e0b,#f97316)' }}><span className="relative flex items-center gap-1"><Star className="w-3.5 h-3.5" />Review {pendingReviewCount}</span></button>)}
+                  {tripStatus !== 'finished' && (
+                    <Link href={`/trip?trip=${selectedTrip.trip_id}`} className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-black bg-emerald-50/90 text-emerald-700 border border-emerald-200/80 shadow-[0_6px_18px_-6px_rgba(16,185,129,0.45)] hover:bg-emerald-100 hover:-translate-y-0.5 active:scale-95 transition">
+                      <MapIcon className="w-4 h-4" /> View cockpit
+                    </Link>
+                  )}
+                  <button type="button" onClick={() => openPool('pool')} title="Browse & add places" className={`${BTN_GHOST} px-3 py-2.5 text-[11px]`}><span className="flex items-center gap-1"><PlusIcon className="w-3.5 h-3.5" />Places</span></button>
+                  <button type="button" onClick={autoFill} disabled={planning} title="Fill empty slots from the inbox — arranged days untouched" className={`${BTN_PRIMARY} px-3 py-2.5 text-[11px] disabled:opacity-60`}><span className="relative flex items-center gap-1"><SparkleIcon className="w-3.5 h-3.5" />{planning ? '…' : 'Auto-fill'}</span></button>
+                  <button type="button" onClick={() => setShowReplanConfirm(true)} disabled={planning} title="Wipe & rebuild the whole schedule" className={`${BTN_GHOST} px-2.5 py-2.5 text-[11px]`}>Re-plan</button>
+                  <button type="button" onClick={copyItinerary} title="Copy itinerary as text" className={`${BTN_GHOST} px-2.5 py-2.5 text-[11px]`}>{copied ? '✓' : 'Copy'}</button>
+                  <button type="button" onClick={() => openPool('route')} title="Route, stops & dates" className={`${BTN_GHOST} px-2.5 py-2.5 text-[11px]`}><span className="flex items-center gap-1"><RouteIcon className="w-3.5 h-3.5" />Route</span></button>
+                  <button type="button" onClick={() => setShowEditTripModal(true)} title="Edit name & dates" className={`${BTN_GHOST} px-2.5 py-2.5 text-[11px]`}><EditIcon className="w-3.5 h-3.5" /></button>
+                  <button type="button" onClick={() => setShowDeleteConfirm(selectedTrip.trip_id)} title="Delete trip" className={`${BTN_GHOST} px-2.5 py-2.5 text-[11px] text-rose-500 hover:text-rose-600`}><TrashIcon className="w-3.5 h-3.5" /></button>
+                  {tripStatus === 'finished' && pendingReviewCount > 0 && (<button type="button" onClick={() => setShowReviewTripModal(true)} className={`${BTN_PRIMARY} px-3 py-2.5 text-[11px]`} style={{ backgroundImage: 'linear-gradient(to right,#f59e0b,#f97316)' }}><span className="relative flex items-center gap-1"><Star className="w-3.5 h-3.5" />Review {pendingReviewCount}</span></button>)}
                 </div>
               </div>
-              {plannerErr && <p className={`mt-2.5 bg-rose-50/80 border border-rose-200/70 text-rose-700 rounded-xl px-3 py-2 text-xs font-bold`}>{plannerErr}</p>}
-              {picking && (<p className={`mt-2.5 bg-violet-50/80 border border-violet-200/70 text-violet-700 rounded-xl px-3 py-2 text-xs font-bold flex items-center justify-between gap-2`}><span>Placing into {fmtDate(picking.date)} · {SLOT_NAMES[picking.slot]} — pick a place in the pool.</span><button type="button" onClick={() => setPicking(null)} className="font-black hover:text-rose-600 transition">Cancel</button></p>)}
+              {plannerErr && <p className="mt-2.5 bg-rose-50/80 border border-rose-200/70 text-rose-700 rounded-xl px-3 py-2 text-xs font-bold">{plannerErr}</p>}
+              {picking && (<p className="mt-2.5 bg-violet-50/80 border border-violet-200/70 text-violet-700 rounded-xl px-3 py-2 text-xs font-bold flex items-center justify-between gap-2"><span>Placing into {fmtDate(picking.date)} · {SLOT_NAMES[picking.slot]} — pick a place in the pool.</span><button type="button" onClick={() => setPicking(null)} className="font-black hover:text-rose-600 transition">Cancel</button></p>)}
             </div>
           </div>
 
-          {/* Board */}
-          <div className="flex gap-3.5 overflow-x-auto pb-4 pt-1 -mx-1 px-1 snap-x snap-proximity">
-            {/* Inbox */}
+          {/* Roadmap + Inbox + Day grid (padded so the docked workspace never covers them) */}
+          <div className={`space-y-4 transition-[padding] duration-300 ${sheetOpen ? 'lg:pr-[25rem]' : ''}`}>
+
+            {/* ROADMAP */}
+            {allDays.length > 0 && (
+              <div className={`${GLASS} rounded-2xl px-4 py-3.5`}>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-violet-600">Roadmap</p>
+                  <p className="text-[10px] font-bold text-slate-400">{tripStops.length} stop{tripStops.length === 1 ? '' : 's'} · tap a day to jump</p>
+                </div>
+                <div className="flex items-start overflow-x-auto pb-1 -mx-1 px-1">
+                  {allDays.map((date, di) => {
+                    const stop = getStopForDate(date);
+                    const sIdx = stopIdxFor(date);
+                    const places = dayPlaces(date);
+                    const isToday = date === todayISO;
+                    const isPick = picking?.date === date;
+                    const isFlash = flashDay === date;
+                    const dObj = new Date(date + 'T00:00:00');
+                    return (
+                      <Fragment key={date}>
+                        {di > 0 && <span className={`mt-[1.05rem] h-0.5 w-4 sm:w-8 shrink-0 rounded-full ${STOP_LINE[sIdx % STOP_LINE.length]}`} aria-hidden="true" />}
+                        <button type="button" onClick={() => focusDay(date)} className="group shrink-0 flex flex-col items-center gap-1 w-[3.7rem] sm:w-[4.2rem]">
+                          <span className={`relative w-9 h-9 rounded-full border-2 ${STOP_BORDER[sIdx % STOP_BORDER.length]} flex items-center justify-center text-xs font-black transition ${places.length ? `${STOP_FILL[sIdx % STOP_FILL.length]} text-white shadow-md` : 'bg-white text-slate-500'} ${isToday ? 'ring-2 ring-emerald-400 ring-offset-2 ring-offset-white' : ''} ${isPick ? 'ring-2 ring-violet-400 ring-offset-2 ring-offset-white' : ''} ${isFlash ? 'scale-125 ring-2 ring-violet-500 ring-offset-2 ring-offset-white' : 'group-hover:scale-110'}`}>
+                            {di + 1}
+                          </span>
+                          <span className={`text-[9px] font-black uppercase tracking-wider leading-none ${isToday ? 'text-emerald-600' : 'text-slate-400'}`}>{isToday ? 'Today' : dObj.toLocaleDateString(undefined, { weekday: 'short' })}</span>
+                          <span className="text-[10px] font-black text-slate-600 tabular-nums leading-none">{dObj.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                          <span className="flex gap-0.5 mt-0.5" aria-hidden="true">{[0, 1, 2].map((si) => (<span key={si} className={`w-1 h-2.5 rounded-full ${places.some((p) => bucketOf(p.start_time, si) === si) ? `bg-gradient-to-b ${SLOT_STRIPE[si]}` : 'bg-slate-200'}`} />))}</span>
+                        </button>
+                      </Fragment>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* INBOX — bigger, full width */}
             <div
               onDragOver={(e) => { e.preventDefault(); setDragOverInbox(true); }}
               onDragLeave={() => setDragOverInbox(false)}
-              onDrop={(e) => { e.preventDefault(); const p = readPayload(e); if (p?.k === 'item') unscheduleItem(p.key); setDragOverInbox(false); setDragKey(null); }}
-              className={`shrink-0 w-[16.5rem] rounded-2xl p-3.5 transition snap-start ${dragOverInbox ? 'ring-2 ring-amber-400 bg-amber-50/70' : 'bg-amber-50/40 border border-amber-200/60'}`}>
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-[10px] font-black uppercase tracking-[0.15em] text-amber-700">Inbox · waiting</p>
-                <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-black tabular-nums">{unscheduledItems.length}</span>
+              onDrop={(e) => { e.preventDefault(); const p = readPayload(e); if (p?.k === 'item') unscheduleItem(p.key); else if (p?.k === 'pool') addItem(p.listing); setDragOverInbox(false); setDragKey(null); }}
+              className={`rounded-2xl p-5 transition ${dragOverInbox ? 'ring-2 ring-amber-400 bg-amber-50/80 scale-[1.005]' : 'bg-amber-50/40 border border-amber-200/60'}`}>
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                <div className="flex items-center gap-2.5">
+                  <GlassWellIcon gradient="from-amber-400 to-orange-500"><MapIcon className="w-5 h-5" /></GlassWellIcon>
+                  <div>
+                    <p className="text-sm font-black uppercase tracking-[0.12em] text-amber-700">Inbox · waiting to schedule</p>
+                    <p className="text-[11px] font-semibold text-amber-700/70">Drag a day card here to unschedule, or drop a pool card to add it here.</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-black tabular-nums">{unscheduledItems.length} waiting</span>
+                  <button type="button" onClick={() => openPool('pool')} className={`${BTN_PRIMARY} px-3.5 py-2 text-[11px]`}><span className="relative flex items-center gap-1"><PlusIcon className="w-3.5 h-3.5" />Browse places</span></button>
+                </div>
               </div>
               {unscheduledItems.length === 0 ? (
-                <p className="text-[11px] font-semibold text-amber-700/70 text-center py-6 border-2 border-dashed border-amber-200/70 rounded-xl">Nothing waiting. Drag a card here to unschedule it.</p>
-              ) : unscheduledItems.map((it) => (
-                <div key={it.key} draggable
-                  onDragStart={(e) => { e.dataTransfer.setData('text/plain', JSON.stringify({ k: 'item', key: it.key })); e.dataTransfer.effectAllowed = 'move'; setDragKey(it.key); }}
-                  onDragEnd={() => { setDragKey(null); setDragOverInbox(false); setDragOverDay(null); setDragOverCard(null); }}
-                  className={`group relative rounded-xl ${CARD} pl-3.5 pr-2 py-2.5 mb-2 last:mb-0 cursor-grab active:cursor-grabbing transition hover:-translate-y-0.5 ${dragKey === it.key ? 'opacity-40 ring-2 ring-violet-400' : ''}`}>
-                  <span className="absolute left-0 top-2 bottom-2 w-1 rounded-full bg-gradient-to-b from-amber-400 to-orange-400" />
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 min-w-0">
-                      <Link href={`/listing/${it.listing_id}`} draggable={false} className="block font-black text-slate-800 text-sm truncate hover:text-violet-700 transition">{it.name}</Link>
-                      <p className="text-[10px] font-semibold text-slate-500 truncate">{it.listing_type ?? 'Place'}{it.destination_name ? ` · ${it.destination_name}` : ''}</p>
+                <p className="text-sm font-semibold text-amber-700/70 text-center py-7 border-2 border-dashed border-amber-200/70 rounded-2xl">{dragOverInbox ? 'Release to drop here' : 'Nothing waiting — every place is scheduled. Add more from Places.'}</p>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5">
+                  {unscheduledItems.map((it) => (
+                    <div key={it.key} draggable
+                      onDragStart={(e) => { e.dataTransfer.setData('text/plain', JSON.stringify({ k: 'item', key: it.key })); e.dataTransfer.effectAllowed = 'move'; setDragKey(it.key); }}
+                      onDragEnd={() => { setDragKey(null); setDragOverInbox(false); setDragOverDay(null); setDragOverCard(null); }}
+                      className={`group relative rounded-xl ${CARD} pl-4 pr-2 py-3 cursor-grab active:cursor-grabbing transition hover:-translate-y-0.5 ${dragKey === it.key ? 'opacity-40 ring-2 ring-violet-400' : ''}`}>
+                      <span className="absolute left-0 top-2.5 bottom-2.5 w-1.5 rounded-r-full bg-gradient-to-b from-amber-400 to-orange-400" />
+                      <div className="flex items-center gap-2.5">
+                        <span className="shrink-0 text-slate-300 group-hover:text-slate-400 transition" aria-hidden="true">
+                          <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><circle cx="9" cy="6" r="1.6" /><circle cx="15" cy="6" r="1.6" /><circle cx="9" cy="12" r="1.6" /><circle cx="15" cy="12" r="1.6" /><circle cx="9" cy="18" r="1.6" /><circle cx="15" cy="18" r="1.6" /></svg>
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <Link href={`/listing/${it.listing_id}`} draggable={false} className="block font-black text-slate-800 text-base truncate hover:text-violet-700 transition">{it.name}</Link>
+                          <p className="text-[11px] font-semibold text-slate-500 truncate">{it.listing_type ?? 'Place'}{it.destination_name ? ` · ${it.destination_name}` : ''}</p>
+                        </div>
+                        <button type="button" onClick={() => removeItem(it)} aria-label={`Remove ${it.name}`} className="w-8 h-8 shrink-0 rounded-lg text-slate-400 opacity-60 group-hover:opacity-100 focus:opacity-100 hover:text-rose-600 hover:bg-rose-50/80 transition flex items-center justify-center"><CloseIcon className="w-4 h-4" /></button>
+                      </div>
                     </div>
-                    <button type="button" onClick={() => removeItem(it)} aria-label={`Remove ${it.name}`} className="w-7 h-7 shrink-0 rounded-lg text-slate-300 hover:text-rose-600 hover:bg-rose-50/80 transition items-center justify-center hidden group-hover:flex"><CloseIcon className="w-3.5 h-3.5" /></button>
-                  </div>
+                  ))}
                 </div>
-              ))}
-              <button type="button" onClick={() => openPool('pool')} className={`w-full mt-1 rounded-xl border-2 border-dashed border-amber-300/70 px-3 py-2.5 text-[11px] font-black text-amber-700 hover:bg-amber-100/60 transition flex items-center justify-center gap-1.5`}><PlusIcon className="w-3.5 h-3.5" />Browse places</button>
+              )}
             </div>
 
-            {/* Day columns */}
+            {/* DAY GRID */}
             {allDays.length === 0 ? (
-              <div className="shrink-0 w-[19rem] rounded-2xl border-2 border-dashed border-violet-300/70 bg-white/50 p-6 text-center snap-start">
+              <div className="rounded-2xl border-2 border-dashed border-violet-300/70 bg-white/50 p-10 text-center">
                 <GlassWellIcon gradient="from-indigo-500 to-violet-500" size="lg"><RouteIcon className="w-7 h-7" /></GlassWellIcon>
-                <p className="font-black text-slate-800 mt-4 mb-1">No day columns yet</p>
-                <p className="text-xs text-slate-500 mb-5">Set the trip dates and every day becomes a column with Morning / Afternoon / Evening slots.</p>
-                <button type="button" onClick={() => openPool('route')} className={`${BTN_PRIMARY} px-5 py-2.5 text-xs`}><span className="relative">Set dates & stops</span></button>
+                <p className="font-black text-slate-800 mt-4 mb-1 text-lg">No day grid yet</p>
+                <p className="text-sm text-slate-500 mb-5 max-w-md mx-auto">Set the trip dates and every day becomes a card with Morning / Afternoon / Evening slots — plus a roadmap up top.</p>
+                <button type="button" onClick={() => openPool('route')} className={`${BTN_PRIMARY} px-5 py-2.5 text-sm`}><span className="relative">Set dates & stops</span></button>
               </div>
-            ) : allDays.map((date, di) => {
-              const places = dayPlaces(date);
-              const notes = dayNotes(date);
-              const stop = getStopForDate(date);
-              const isToday = date === todayISO;
-              return (
-                <div key={date}
-                  onDragOver={(e) => { e.preventDefault(); setDragOverDay(date); }}
-                  onDragLeave={() => setDragOverDay((d) => (d === date ? null : d))}
-                  onDrop={(e) => { e.preventDefault(); const p = readPayload(e); const si = freeSlotIndex(date); if (p?.k === 'item') { if (si === -1) setPlannerErr('That day already has 3 places.'); else placeExisting(p.key, date, si); } else if (p?.k === 'pool') { if (si === -1) setPlannerErr('That day already has 3 places.'); else placePool(p.listing, date, si); } setDragOverDay(null); setDragOverCard(null); setDragKey(null); }}
-                  className={`shrink-0 w-[19rem] rounded-2xl p-3.5 transition snap-start tm-pop-c ${dragOverDay === date ? 'ring-2 ring-violet-400 bg-violet-50/60' : isToday ? 'bg-emerald-50/50 border border-emerald-200/70' : 'bg-white/60 border border-white/80 shadow-[0_10px_28px_-12px_rgba(110,120,190,0.35)]'}`}
-                  style={{ animationDelay: `${Math.min(di, 10) * 45}ms` }}>
-                  <div className="flex items-start justify-between gap-2 mb-2.5">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className={`w-7 h-7 rounded-lg bg-gradient-to-br ${GRAD} text-white text-xs font-black flex items-center justify-center shadow-md shrink-0`}>{di + 1}</span>
-                        <div className="min-w-0">
-                          <p className="font-black text-slate-800 text-sm leading-tight truncate">{fmtDate(date)}{isToday && <span className="ml-1.5 text-[9px] font-black uppercase tracking-wider text-emerald-600">Today</span>}</p>
-                          <p className="text-[10px] font-bold text-slate-500 truncate">{stop ?? 'No stop'} · {places.length}/3</p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                {allDays.map((date, di) => {
+                  const places = dayPlaces(date);
+                  const notes = dayNotes(date);
+                  const stop = getStopForDate(date);
+                  const sIdx = stopIdxFor(date);
+                  const isToday = date === todayISO;
+                  const isPick = picking?.date === date;
+                  const isFlash = flashDay === date;
+                  const dObj = new Date(date + 'T00:00:00');
+                  return (
+                    <div key={date}
+                      ref={(el) => { dayRefs.current[date] = el; }}
+                      onDragOver={(e) => { e.preventDefault(); setDragOverDay(date); }}
+                      onDragLeave={() => setDragOverDay((d) => (d === date ? null : d))}
+                      onDrop={(e) => { e.preventDefault(); const p = readPayload(e); const si = freeSlotIndex(date); if (p?.k === 'item') { if (si === -1) setPlannerErr('That day already has 3 places.'); else placeExisting(p.key, date, si); } else if (p?.k === 'pool') { if (si === -1) setPlannerErr('That day already has 3 places.'); else placePool(p.listing, date, si); } setDragOverDay(null); setDragOverCard(null); setDragKey(null); }}
+                      className={`relative rounded-2xl p-5 pl-6 transition tm-pop-c ${dragOverDay === date ? 'ring-2 ring-violet-400 bg-violet-50/60' : isPick ? 'ring-2 ring-violet-400/80 bg-violet-50/50' : isToday ? 'bg-emerald-50/50 border border-emerald-200/70' : 'bg-white/60 border border-white/80 shadow-[0_10px_28px_-12px_rgba(110,120,190,0.35)]'} ${isFlash ? 'ring-2 ring-violet-500 scale-[1.01]' : ''}`}
+                      style={{ animationDelay: `${Math.min(di, 12) * 45}ms` }}>
+                      <span className={`absolute left-0 top-5 bottom-5 w-1.5 rounded-r-full ${STOP_FILL[sIdx % STOP_FILL.length]}`} aria-hidden="true" />
+                      <div className="flex items-start justify-between gap-3 mb-4">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <span className={`w-12 h-12 shrink-0 rounded-2xl bg-gradient-to-br ${GRAD} text-white text-xl font-black flex items-center justify-center shadow-md`}>{di + 1}</span>
+                          <div className="min-w-0">
+                            <p className="font-black text-slate-800 text-lg leading-tight truncate">{dObj.toLocaleDateString(undefined, { weekday: 'long' })}{isToday && <span className="ml-2 text-[10px] font-black uppercase tracking-wider text-emerald-600">Today</span>}</p>
+                            <p className="text-sm font-bold text-slate-500 truncate tabular-nums">{dObj.toLocaleDateString(undefined, { month: 'long', day: 'numeric' })} · {dObj.getFullYear()}</p>
+                            <p className="text-[11px] font-bold text-slate-400 truncate mt-0.5">{stop ? `📍 ${stop}` : 'No stop assigned'} · {places.length}/3 places</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <div className="flex gap-0.5 mr-0.5" title="Slot occupancy">
+                            {[0, 1, 2].map((si) => (<span key={si} className={`w-1.5 h-5 rounded-full ${places.some((p) => bucketOf(p.start_time, si) === si) ? `bg-gradient-to-b ${SLOT_STRIPE[si]}` : 'bg-slate-200'}`} />))}
+                          </div>
+                          <button type="button" onClick={() => addNoteToDay(date)} title="Add note to this day" className="w-7 h-7 rounded-lg text-slate-400 hover:text-violet-600 hover:bg-violet-50 transition flex items-center justify-center"><PlusIcon className="w-3.5 h-3.5" /></button>
+                          {places.length > 0 && (<button type="button" onClick={() => unscheduleDay(date)} title="Send this day's places back to inbox" className="w-7 h-7 rounded-lg text-slate-400 hover:text-amber-600 hover:bg-amber-50 transition flex items-center justify-center"><ChevronDown className="w-4 h-4" /></button>)}
+                          <button type="button" onClick={() => startPicking(date)} title="Pick a place into this day" className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-500 text-white hover:brightness-110 transition flex items-center justify-center shadow-sm"><PlusIcon className="w-3.5 h-3.5" /></button>
                         </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <div className="flex gap-0.5 mr-0.5" title="Slot occupancy">
-                        {[0, 1, 2].map((si) => (<span key={si} className={`w-1.5 h-4 rounded-full ${places.some((p) => bucketOf(p.start_time, si) === si) ? `bg-gradient-to-b ${SLOT_STRIPE[si]}` : 'bg-slate-200'}`} />))}
+                      <div className="min-h-[4rem]">
+                        {places.map((it) => (<PlaceCard key={it.key} it={it} date={date} />))}
+                        {places.length === 0 && (
+                          <button type="button" onClick={() => startPicking(date)} className={`w-full rounded-xl border-2 border-dashed px-3 py-5 text-sm font-bold transition flex items-center justify-center gap-1.5 ${dragOverDay === date ? 'border-violet-400 bg-violet-50/70 text-violet-700' : 'border-slate-300/70 text-slate-400 hover:border-violet-300 hover:text-violet-600 hover:bg-violet-50/40'}`}>
+                            <PlusIcon className="w-4 h-4" /> Drop here or tap to pick
+                          </button>
+                        )}
                       </div>
-                      <button type="button" onClick={() => addNoteToDay(date)} title="Add note to this day" className="w-6 h-6 rounded-md text-slate-400 hover:text-violet-600 hover:bg-violet-50 transition flex items-center justify-center"><PlusIcon className="w-3 h-3" /></button>
-                      {places.length > 0 && (<button type="button" onClick={() => unscheduleDay(date)} title="Send this day's places back to inbox" className="w-6 h-6 rounded-md text-slate-400 hover:text-amber-600 hover:bg-amber-50 transition flex items-center justify-center"><ChevronDown className="w-3.5 h-3.5" /></button>)}
-                      <button type="button" onClick={() => startPicking(date)} title="Pick a place into this day" className="w-6 h-6 rounded-md bg-gradient-to-br from-indigo-500 to-violet-500 text-white hover:brightness-110 transition flex items-center justify-center shadow-sm"><PlusIcon className="w-3 h-3" /></button>
-                    </div>
-                  </div>
-                  <div className="min-h-[3.5rem]">
-                    {places.map((it) => (<PlaceCard key={it.key} it={it} date={date} />))}
-                    {places.length === 0 && (
-                      <button type="button" onClick={() => startPicking(date)} className={`w-full rounded-xl border-2 border-dashed px-3 py-4 text-[11px] font-bold transition flex items-center justify-center gap-1.5 ${dragOverDay === date ? 'border-violet-400 bg-violet-50/70 text-violet-700' : 'border-slate-300/70 text-slate-400 hover:border-violet-300 hover:text-violet-600 hover:bg-violet-50/40'}`}>
-                        <PlusIcon className="w-3.5 h-3.5" /> Drop here or tap to pick
-                      </button>
-                    )}
-                  </div>
-                  {notes.length > 0 && (
-                    <div className="mt-2 space-y-1.5">
-                      {notes.map((n) => (
-                        <div key={n.key} className="group flex items-start gap-2 rounded-lg bg-amber-50/90 border border-amber-200/70 px-2.5 py-2">
-                          <span className="text-[10px]">📝</span>
-                          <p className="flex-1 text-[11px] text-slate-700 font-semibold leading-snug">{n.notes}</p>
-                          <button type="button" onClick={() => removeItem(n)} aria-label="Remove note" className="w-5 h-5 shrink-0 rounded text-slate-300 hover:text-rose-600 transition items-center justify-center hidden group-hover:flex"><CloseIcon className="w-3 h-3" /></button>
+                      {notes.length > 0 && (
+                        <div className="mt-3 space-y-1.5">
+                          {notes.map((n) => (
+                            <div key={n.key} className="group flex items-start gap-2 rounded-lg bg-amber-50/90 border border-amber-200/70 px-3 py-2.5">
+                              <span className="text-xs">📝</span>
+                              <p className="flex-1 text-xs text-slate-700 font-semibold leading-snug">{n.notes}</p>
+                              <button type="button" onClick={() => removeItem(n)} aria-label="Remove note" className="w-6 h-6 shrink-0 rounded text-slate-400 opacity-60 group-hover:opacity-100 focus:opacity-100 hover:text-rose-600 transition flex items-center justify-center"><CloseIcon className="w-3.5 h-3.5" /></button>
+                            </div>
+                          ))}
                         </div>
-                      ))}
+                      )}
                     </div>
-                  )}
-                </div>
-              );
-            })}
-
-            {/* Tail: add-place column CTA */}
-            <button type="button" onClick={() => openPool('pool')} className="shrink-0 w-[13rem] rounded-2xl border-2 border-dashed border-violet-300/70 bg-white/40 p-5 text-center snap-start hover:bg-violet-50/50 hover:border-violet-400 transition group">
-              <span className={`mx-auto w-11 h-11 rounded-2xl bg-gradient-to-br ${GRAD} text-white flex items-center justify-center shadow-md group-hover:scale-105 transition`}><PlusIcon className="w-5 h-5" /></span>
-              <p className="mt-3 font-black text-slate-700 text-sm">Add places</p>
-              <p className="mt-1 text-[11px] font-semibold text-slate-400">Search the catalog or browse suggestions for your stops.</p>
-            </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </>
       ) : null}
 
-      {/* Slide-over workspace */}
+      {/* Workspace: docked panel on desktop (board stays draggable underneath), scrim sheet on mobile */}
       {sheetOpen && (
-        <div className="fixed inset-0 z-[65] backdrop-blur-[2px] flex justify-end animate-fade-in" onClick={() => { setSheetOpen(false); setPicking(null); }}>
-          <div className={`${SHEET_SURF} w-[94%] sm:w-[26rem] h-full tm-sheet-c flex flex-col`} onClick={(e) => e.stopPropagation()}>
+        <>
+          <div className="fixed inset-0 z-[64] bg-slate-900/25 backdrop-blur-[1px] lg:hidden animate-fade-in" onClick={() => { setSheetOpen(false); setPicking(null); }} />
+          <div className={`fixed right-0 top-0 bottom-0 z-[65] w-[94%] sm:w-[26rem] lg:w-[24rem] ${SHEET_SURF} tm-sheet-c flex flex-col`}>
             <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-slate-100">
               <div className={`${GLASS_SM} rounded-xl p-1 flex gap-1`}>
                 {(['pool', 'route'] as const).map((tb) => (
@@ -626,7 +707,7 @@ export default function PlanTab({ userId, trips, refreshTrips, explore, schedMap
             {sheetTab === 'pool' ? (
               <div className="flex-1 min-h-0 flex flex-col px-5 py-4">
                 {picking && (
-                  <div className={`mb-3 flex items-center justify-between gap-2 rounded-xl bg-violet-50/80 border border-violet-200/70 px-3 py-2`}>
+                  <div className="mb-3 flex items-center justify-between gap-2 rounded-xl bg-violet-50/80 border border-violet-200/70 px-3 py-2">
                     <span className="text-[11px] font-black text-violet-700">Placing into {fmtDate(picking.date)} · {SLOT_NAMES[picking.slot]}</span>
                     <button type="button" onClick={() => setPicking(null)} className="text-[11px] font-black text-slate-500 hover:text-rose-600 transition">Cancel</button>
                   </div>
@@ -646,14 +727,14 @@ export default function PlanTab({ userId, trips, refreshTrips, explore, schedMap
                         <p className="text-[10px] text-slate-500 truncate font-semibold">{l.destination?.destination_name}{l.average_rating != null ? ` · ★ ${Number(l.average_rating).toFixed(1)}` : ''}</p>
                       </div>
                       <button type="button" disabled={addingId === l.listing_id}
-                        onClick={() => { if (picking) placePool(l.listing_id, picking.date, picking.slot); else addItem(l.listing_id); }}
+                        onClick={() => { if (picking) placePool(l.listing_id, picking.date, picking.slot); else { addItem(l.listing_id); if (isTouchNarrow()) setSheetOpen(false); } }}
                         className={`shrink-0 ${BTN_PRIMARY} px-3 py-2 text-[11px] disabled:opacity-60`}>
                         <span className="relative flex items-center gap-1"><PlusIcon className="w-3 h-3" />{picking ? 'Place' : 'Inbox'}</span>
                       </button>
                     </div>
                   ))}
                 </div>
-                <p className="pt-3 text-[10px] font-semibold text-slate-400">Add → sends to Inbox. Drag onto a day column → schedules directly. Tap a column's ＋ first for guided placing.</p>
+                <p className="pt-3 text-[10px] font-semibold text-slate-400">Inbox → waits unscheduled. On desktop, drag any card straight onto a day card or the Inbox while this panel stays open. On mobile, tap a day's ＋ then tap a place here.</p>
               </div>
             ) : (
               <div className="flex-1 min-h-0 overflow-y-auto px-5 py-4 space-y-5">
@@ -677,7 +758,7 @@ export default function PlanTab({ userId, trips, refreshTrips, explore, schedMap
                     <div className="space-y-2">
                       {tripStops.map((s, si) => (
                         <div key={s.label} className={`flex items-center gap-2.5 rounded-xl ${CARD} px-3 py-2.5`}>
-                          <span className={`w-7 h-7 shrink-0 rounded-lg bg-gradient-to-br ${GRAD} text-white text-[10px] font-black flex items-center justify-center`}>{si + 1}</span>
+                          <span className={`w-7 h-7 shrink-0 rounded-lg ${STOP_FILL[si % STOP_FILL.length]} text-white text-[10px] font-black flex items-center justify-center`}>{si + 1}</span>
                           <div className="flex-1 min-w-0"><p className="font-black text-slate-800 text-sm truncate">{s.label}</p><p className="text-[10px] text-slate-500 font-semibold truncate">{stopItemCount(s.label)} places here</p></div>
                           <div className={`${INSET} flex items-center rounded-lg overflow-hidden shrink-0`}>
                             <button type="button" onClick={() => setStopDays(s.label, Math.max(1, s.days - 1))} disabled={s.days <= 1} className="w-8 h-8 flex items-center justify-center text-slate-500 hover:text-violet-600 disabled:opacity-30 transition" aria-label="Decrease days"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-3.5 h-3.5"><path d="M5 12h14" strokeLinecap="round" /></svg></button>
@@ -693,14 +774,14 @@ export default function PlanTab({ userId, trips, refreshTrips, explore, schedMap
                 </div>
                 {plannedDates.length > 0 && (
                   <div className="grid grid-cols-2 gap-2">
-                    <div className={`${INSET} rounded-xl px-3 py-2.5 text-center`}><p className={`text-lg font-black ${GRAD_TEXT}`}>{plannedDates.length}</p><p className="text-[9px] font-black uppercase tracking-wider text-slate-400">Days used</p></div>
-                    <div className={`${INSET} rounded-xl px-3 py-2.5 text-center`}><p className={`text-lg font-black ${GRAD_TEXT}`}>{unscheduledItems.length}</p><p className="text-[9px] font-black uppercase tracking-wider text-slate-400">Waiting</p></div>
+                    <div className={`${INSET} rounded-xl px-3 py-2.5 text-center`}><p className="text-lg font-black text-slate-700">{plannedDates.length}</p><p className="text-[9px] font-black uppercase tracking-wider text-slate-400">Days used</p></div>
+                    <div className={`${INSET} rounded-xl px-3 py-2.5 text-center`}><p className="text-lg font-black text-slate-700">{unscheduledItems.length}</p><p className="text-[9px] font-black uppercase tracking-wider text-slate-400">Waiting</p></div>
                   </div>
                 )}
               </div>
             )}
           </div>
-        </div>
+        </>
       )}
 
       {/* Modals (no gray scrim) */}
@@ -721,7 +802,7 @@ export default function PlanTab({ userId, trips, refreshTrips, explore, schedMap
             <input value={destSearch} onChange={(e) => setDestSearch(e.target.value)} maxLength={50} placeholder="Search province, city, or country…" autoFocus className={`${INPUT} mb-2`} />
             <p className="text-xs text-slate-400 text-right mb-3 font-semibold">{destSearch.length}/50</p>
             <p className="text-sm text-slate-600 mb-4">{destSearch.trim().length >= 2 ? (<><span className="font-black text-violet-600">{previewCount}</span> place{previewCount === 1 ? '' : 's'} fall inside "{destSearch.trim()}"</>) : 'Type a province, city, or country — e.g., "La Union", "Kyoto".'}</p>
-            {regionSuggestions.length > 0 && (<div className="flex flex-wrap gap-2 mb-5">{regionSuggestions.map((r) => (<button key={r} type="button" onClick={() => setDestSearch(r)} className={`px-3 py-1.5 rounded-full text-xs font-bold ${NEU_SM} text-slate-600 hover:text-violet-600 transition active:scale-95`}>{r}</button>))}</div>)}
+            {regionSuggestions.length > 0 && (<div className="flex flex-wrap gap-2 mb-5">{regionSuggestions.map((r) => (<button key={r} type="button" onClick={() => setDestSearch(r)} className={`px-3 py-1.5 rounded-full text-xs font-bold ${GLASS_SM} text-slate-600 hover:text-violet-600 transition active:scale-95`}>{r}</button>))}</div>)}
             <button type="button" disabled={destSearch.trim().length < 2} onClick={() => addStop(destSearch)} className={`w-full ${BTN_PRIMARY} py-3.5 text-sm disabled:opacity-60`}><span className="relative">Add stop "{destSearch.trim() || '…'}"</span></button>
           </div>
         </div>
@@ -822,13 +903,13 @@ function ReviewTripModal({ trip, userId, onClose, onReviewed }: { trip: TripData
           <div className="text-center py-8"><GlassWellIcon gradient="from-emerald-400 to-teal-500" size="lg"><span className="text-2xl">🎉</span></GlassWellIcon><h4 className="text-lg font-black text-slate-800 mt-4 mb-2">{doneCount === places.length ? 'All reviewed!' : 'All caught up!'}</h4><p className="text-sm text-slate-500 mb-6 max-w-sm mx-auto">{doneCount === places.length ? 'Your reviews are live on each place page — thank you for helping other travelers.' : 'You have already reviewed every place on this trip.'}</p><button type="button" onClick={onClose} className={`w-full ${BTN_PRIMARY} py-3 text-sm`}><span className="relative">Done</span></button></div>
         ) : current ? (
           <>
-            <div className="flex items-center justify-between text-[11px] font-black text-slate-500 mb-1.5"><span>Place {doneCount + 1} of {places.length}</span><span className={GRAD_TEXT}>{pct}%</span></div>
+            <div className="flex items-center justify-between text-[11px] font-black text-slate-500 mb-1.5"><span>Place {doneCount + 1} of {places.length}</span><span className="text-violet-600">{pct}%</span></div>
             <div className={`${INSET} w-full h-2.5 rounded-full mb-5 overflow-hidden`}><div className={`h-full rounded-full transition-all duration-700 ${GLOSS} bg-gradient-to-r ${GRAD}`} style={{ width: `${pct}%` }} /></div>
-            <div className={`flex items-center gap-3 p-3.5 rounded-2xl ${NEU_SM} mb-5`}><GlassWellIcon gradient="from-indigo-500 to-violet-500"><span className="w-12 h-12 flex items-center justify-center font-black">{current.listing_type?.charAt(0) ?? 'P'}</span></GlassWellIcon><div className="min-w-0"><p className="font-black text-slate-800 truncate text-sm">{current.name}</p><p className="text-[11px] text-slate-500 truncate font-semibold">{current.listing_type}{current.destination_name ? ` · ${current.destination_name}` : ''}</p></div></div>
+            <div className={`flex items-center gap-3 p-3.5 rounded-2xl ${GLASS_SM} mb-5`}><GlassWellIcon gradient="from-indigo-500 to-violet-500"><span className="w-12 h-12 flex items-center justify-center font-black">{current.listing_type?.charAt(0) ?? 'P'}</span></GlassWellIcon><div className="min-w-0"><p className="font-black text-slate-800 truncate text-sm">{current.name}</p><p className="text-[11px] text-slate-500 truncate font-semibold">{current.listing_type}{current.destination_name ? ` · ${current.destination_name}` : ''}</p></div></div>
             {err && <p className={`${GLASS} border-rose-200/70 text-rose-700 rounded-2xl px-4 py-2.5 text-sm font-semibold mb-4`}>{err}</p>}
             <div className="mb-4"><label className="block text-xs font-black uppercase tracking-[0.12em] text-slate-500 mb-2">Your rating</label><div className="flex items-center gap-1">{[1, 2, 3, 4, 5].map((n) => (<button key={n} type="button" onClick={() => setRating(n)} onMouseEnter={() => setHoverStar(n)} onMouseLeave={() => setHoverStar(0)} aria-label={`${n} star${n === 1 ? '' : 's'}`} className={`p-1 rounded-lg transition hover:scale-110 active:scale-95 ${n <= shown ? 'text-amber-400' : 'text-slate-300'}`}><Star className="w-8 h-8" /></button>))}{shown > 0 && <span className="ml-2 text-sm font-black text-slate-600">{starLabels[shown]}</span>}</div></div>
-            <div className="mb-3"><div className="flex items-baseline justify-between mb-1"><label className="block text-xs font-black uppercase tracking-[0.12em] text-slate-500">Headline <span className="font-semibold normal-case tracking-normal text-slate-400">(optional)</span></label><span className="text-[11px] text-slate-400 font-semibold">{title.length}/60</span></div><input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={60} placeholder="Sum it up in a few words" className={INPUT} /></div>
-            <div className="mb-5"><div className="flex items-baseline justify-between mb-1"><label className="block text-xs font-black uppercase tracking-[0.12em] text-slate-500">Your review <span className="font-semibold normal-case tracking-normal text-slate-400">(optional)</span></label><span className="text-[11px] text-slate-400 font-semibold">{text.length}/300</span></div><textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} maxLength={300} placeholder="What stood out? Food, service, vibes, tips…" className={`${INPUT} resize-none`} /></div>
+            <div className="mb-3"><div className="flex items-baseline justify-between mb-1"><label className="text-xs font-black uppercase tracking-[0.12em] text-slate-500">Headline <span className="font-semibold normal-case tracking-normal text-slate-400">(optional)</span></label><span className="text-[11px] text-slate-400 font-semibold">{title.length}/60</span></div><input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={60} placeholder="Sum it up in a few words" className={INPUT} /></div>
+            <div className="mb-5"><div className="flex items-baseline justify-between mb-1"><label className="text-xs font-black uppercase tracking-[0.12em] text-slate-500">Your review <span className="font-semibold normal-case tracking-normal text-slate-400">(optional)</span></label><span className="text-[11px] text-slate-400 font-semibold">{text.length}/300</span></div><textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} maxLength={300} placeholder="What stood out? Food, service, vibes, tips…" className={`${INPUT} resize-none`} /></div>
             <div className="flex gap-3"><button type="button" onClick={() => submit(true)} disabled={busy} className={`flex-1 ${BTN_GHOST} py-3 text-sm disabled:opacity-60`}>Skip</button><button type="button" onClick={() => submit(false)} disabled={busy || rating < 1} className={`flex-1 ${BTN_PRIMARY} py-3 text-sm disabled:opacity-60`}><span className="relative">{busy ? 'Saving…' : doneCount + 1 === places.length ? 'Submit & finish' : 'Submit & next'}</span></button></div>
           </>
         ) : null}
