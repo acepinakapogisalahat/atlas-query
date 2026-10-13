@@ -18,6 +18,12 @@ async function audit(sup: ReturnType<typeof createClient>, action: string, table
   try { await sup.from('admin_audit_logs').insert({ action, target_table: table, target_id: id, detail: detail ?? null }); } catch {}
 }
 
+// best-effort user notification; never throws, so a notify hiccup can't fail a successful admin action
+async function notify(sup: ReturnType<typeof createClient>, userId: string | null | undefined, type: string, title: string, message: string, related?: string | null) {
+  if (!userId) return;
+  try { await sup.rpc('notify_user', { p_user_id: userId, p_type: type, p_title: title, p_message: message, p_related: related ?? null }); } catch {}
+}
+
 /* ─────────────── Users ─────────────── */
 // LIVE schema: app_users has name / email / sex / current_location / status (NOT first_name/last_name/home_city/location).
 // We alias current_location -> location so the rest of the layer + UI stay stable.
@@ -48,6 +54,12 @@ export async function setUserStatus(userId: string, status: 'active' | 'suspende
   const { error } = await sup.from('app_users').update({ status }).eq('user_id', userId);
   if (error) throw error;
   await audit(sup, `user.${status}`, 'app_users', userId, { reason });
+  const meta = status === 'banned'
+    ? { t: 'account_banned', title: 'Your account has been banned', msg: `Your TravelMate account was banned.${reason ? ` Reason: ${reason}` : ''} Contact support if you believe this is a mistake.` }
+    : status === 'suspended'
+    ? { t: 'account_suspended', title: 'Your account has been suspended', msg: `Your TravelMate account was suspended.${reason ? ` Reason: ${reason}` : ''} Some features are paused until it is restored.` }
+    : { t: 'account_reinstated', title: 'Your account is active again', msg: 'Your TravelMate account has been reinstated. Welcome back!' };
+  await notify(sup, userId, meta.t, meta.title, meta.msg, null);
 }
 
 /* ─────────────── Listings ─────────────── */
@@ -90,15 +102,19 @@ export async function setListingModeration(id: string, patch: { is_visible?: boo
 // Soft remove = unpublish + mark removed (reversible, keeps data + FK integrity)
 export async function softRemoveListing(id: string, reason = '') {
   const sup = db(); await assertSuper(sup);
+  const { data: l } = await sup.from('listings').select('uploaded_by, name').eq('listing_id', id).maybeSingle();
   const { error } = await sup.from('listings').update({ is_visible: false, moderation_status: 'removed' }).eq('listing_id', id);
   if (error) throw error;
   await audit(sup, 'listing.remove_soft', 'listings', id, { reason });
+  await notify(sup, l?.uploaded_by, 'listing_hidden', 'One of your listings was taken offline',
+    `“${l?.name ?? 'A listing'}” was hidden from search by a moderator.${reason ? ` Reason: ${reason}` : ''} It is not deleted — contact the platform to restore it.`, id);
 }
 
 // Hard delete = admin power; clears dependents first so FK never blocks.
 // NOTE: no rating recalc here — the listing row is gone, so there is nothing to recalc.
 export async function hardDeleteListing(id: string) {
   const sup = db(); await assertSuper(sup);
+  const { data: l } = await sup.from('listings').select('uploaded_by, name').eq('listing_id', id).maybeSingle();
   await sup.from('photos').delete().eq('listing_id', id);
   await sup.from('trip_items').delete().eq('listing_id', id);
   const { count: revCount } = await sup.from('reviews').select('review_id', { count: 'exact', head: true }).eq('listing_id', id);
@@ -106,6 +122,8 @@ export async function hardDeleteListing(id: string) {
   const { error } = await sup.from('listings').delete().eq('listing_id', id);
   if (error) throw error;
   await audit(sup, 'listing.delete_hard', 'listings', id, { reviews_removed: revCount ?? 0 });
+  await notify(sup, l?.uploaded_by, 'listing_removed', 'One of your listings was permanently removed',
+    `“${l?.name ?? 'A listing'}” and all its photos, reviews and trip-items were deleted by a moderator. This action cannot be undone.`, null);
 }
 
 /* ─────────────── Reviews / moderation ─────────────── */
@@ -134,9 +152,16 @@ export async function listReviews(filter: 'all' | 'flagged' | 'critical' = 'all'
 
 export async function flagReview(id: string, flagged: boolean, reason = '') {
   const sup = db(); await assertSuper(sup);
+  const { data: rv } = await sup.from('reviews').select('user_id, listing_id').eq('review_id', id).maybeSingle();
+  let ln: string | null = null;
+  if (rv?.listing_id) { const { data: l } = await sup.from('listings').select('name').eq('listing_id', rv.listing_id).maybeSingle(); ln = l?.name ?? null; }
   const { error } = await sup.from('reviews').update({ flagged, flagged_reason: flagged ? reason : null, flagged_at: flagged ? new Date().toISOString() : null }).eq('review_id', id);
   if (error) throw error;
   await audit(sup, flagged ? 'review.flag' : 'review.unflag', 'reviews', id, { reason });
+  await notify(sup, rv?.user_id, flagged ? 'review_flagged' : 'review_unflag',
+    flagged ? 'Your review was flagged for review' : 'Your review flag was cleared',
+    flagged ? `A moderator flagged your review on “${ln ?? 'a listing'}”.${reason ? ` Reason: ${reason}` : ''}` : `Your review on “${ln ?? 'a listing'}” is no longer flagged.`,
+    rv?.listing_id ?? null);
 }
 
 export async function deleteReview(id: string, listingId: string) {
@@ -177,12 +202,19 @@ export async function listApplications(filter: 'all' | 'pending' | 'approved' | 
 // Move-4 ready: stamps the reviewing admin (reviewed_by FK) + date, flips status, logs the note.
 export async function decideApplication(id: string, decision: 'approved' | 'rejected', note = '') {
   const sup = db(); const adminId = await assertSuper(sup);
+  const { data: app } = await sup.from('business_applications').select('user_id, company_name').eq('application_id', id).maybeSingle();
   const today = new Date().toISOString().slice(0, 10); // reviewed_at is DATE
   const { error } = await sup.from('business_applications')
     .update({ status: decision, reviewed_by: adminId, reviewed_at: today })
     .eq('application_id', id);
   if (error) throw error;
   await audit(sup, `application.${decision}`, 'business_applications', id, { note: note || null });
+  await notify(sup, app?.user_id, `application_${decision}`,
+    decision === 'approved' ? 'Your publisher application was approved' : 'Your publisher application was not approved',
+    decision === 'approved'
+      ? `Great news — your application for “${app?.company_name ?? 'your business'}” was approved.${note ? ` Note: ${note}` : ''}`
+      : `Your application for “${app?.company_name ?? 'your business'}” was not approved at this time.${note ? ` Reason: ${note}` : ''}`,
+    id);
 }
 
 /* ─────────────── Destinations ─────────────── */

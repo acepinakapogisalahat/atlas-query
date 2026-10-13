@@ -260,7 +260,7 @@ export default function ReviewTripPage() {
         user_id: role.userId,
         rating,
         title: title.trim() || null,
-        review_text: text.trim() || null,
+        review_text: text.trim() || `(rated ${rating}/5 — no written review)`,
         visit_date: trip?.end_date || new Date().toISOString().slice(0, 10),
         submission_date: new Date().toISOString().slice(0, 10),
         helpful_votes_count: 0,
@@ -565,7 +565,7 @@ export default function ReviewTripPage() {
                   <div className="mb-4">
                     <div className="flex items-baseline justify-between mb-1.5">
                       <label className="block text-sm font-semibold text-slate-700">
-                        Headline <span className="font-normal text-slate-400">(optional)</span>
+                        Headline <span className="font-normal text-slate-400"></span>
                       </label>
                       <span className="text-xs text-slate-400">{title.length}/60</span>
                     </div>

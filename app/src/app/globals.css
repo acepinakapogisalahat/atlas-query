@@ -268,3 +268,79 @@ body {
     background: #f1f5f9;
   }
 }
+
+/* Blob animation */
+@keyframes blob {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(30px, -50px) scale(1.1);
+  }
+  66% {
+    transform: translate(-20px, 20px) scale(0.9);
+  }
+}
+
+.animate-blob {
+  animation: blob 7s infinite;
+}
+
+.animation-delay-2000 {
+  animation-delay: 2s;
+}
+
+.animation-delay-4000 {
+  animation-delay: 4s;
+}
+
+/* Fade in animations */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-in {
+  animation: fade-in 0.6s ease-out forwards;
+}
+
+.fade-in {
+  animation: fade-in 0.6s ease-out forwards;
+}
+
+.slide-in-from-bottom-4 {
+  animation: fade-in 0.7s ease-out forwards;
+}
+
+/* Duration utilities */
+.duration-500 {
+  animation-duration: 500ms;
+}
+
+.duration-700 {
+  animation-duration: 700ms;
+}
+
+.duration-1000 {
+  animation-duration: 1000ms;
+}
+/* ── Text containment: wrap unbreakable strings instead of letting them stretch/overflow ──
+   (long URLs, pasted blobs, test data). overflow-wrap: anywhere only activates when a word
+   would overflow its line box, so normal prose rendering is unchanged; it also shrinks the
+   min-content size, which fixes the same blowout inside flex/grid children. */
+/* break-word (NOT anywhere): breaks an overlong word only when it would overflow its box —
+   which is exactly the listing-description case — while PRESERVING min-content size, so
+   flex/grid chrome (tabs, nav pills, badges) never shrinks below a word and never mid-wraps.
+   `anywhere` collapses min-content to 1 char and caused the "Disco/ver" tab split. */
+p, h1, h2, h3, h4, h5, h6, span, dd, dt, li, blockquote, td, th, a, button, label {
+  overflow-wrap: break-word;
+}
+
+/* Belt: any element that already truncates (truncate/line-clamp) keeps its behavior —
+   this rule only adds wrapping for elements that DON'T truncate. No existing class is overridden. */

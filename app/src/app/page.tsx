@@ -12,6 +12,7 @@ import PlanTab from '@/components/dashboard/PlanTab';
 import DiscoverTab from '@/components/dashboard/DiscoverTab';
 import ToolsTab from '@/components/dashboard/ToolsTab';
 import LandingHero from '@/components/dashboard/LandingHero';
+import BusinessOnboarding from '@/components/business/BusinessOnboarding';
 import {
   NEU, NEU_SM, INSET, GLASS, GLASS_SM, GRAD, PILL_ACTIVE, CANVAS, FLOAT_SHADOW,
   Star, Chevron, MapIcon, SparkleIcon, CompassIcon, RouteIcon, BoltIcon, GlassWellIcon, Link,
@@ -36,7 +37,7 @@ export default function HomePage() {
   const { isSuperadmin, loading: suLoading } = useSuperuser();
   const [routing, setRouting] = useState<boolean | null>(null);
   const [ready, setReady] = useState(false);
-  const [tab, setTab] = useState<Tab>('plan');
+  const [tab, setTab] = useState<Tab | null>(null); // null = landing; ?trip= is promoted post-hydration (SSR-safe)
   const [fabOpen, setFabOpen] = useState(false);
 
   const [firstName, setFirstName] = useState<string | null>(null);
@@ -66,9 +67,10 @@ export default function HomePage() {
       if (isSuperadmin) { router.replace('/admin'); return; }
       if (role.isOwner || role.isAdmin) { router.replace('/business'); return; }
       if (role.userId) {
-        const { data, error } = await supabase.from('business_applications').select('status').eq('user_id', role.userId).limit(1);
-        const st = !error ? (data?.[0]?.status ?? null) : null;
-        if (st === 'pending') { router.replace('/business'); return; }
+        const { data, error } = await supabase.from('business_applications').select('status, application_kind').eq('user_id', role.userId);
+        const rows = !error ? ((data ?? []) as { status: string | null; application_kind?: string | null }[]) : [];
+        const approvedOwner = rows.some((r) => (r.application_kind ?? 'business') === 'business' && /^(approv|accept|live|publish|verified|granted|active)/i.test((r.status ?? '').trim()));
+        if (approvedOwner || rows.some((r) => (r.status ?? '') === 'pending')) { router.replace('/business'); return; }
       }
       setRouting(false);
     }
@@ -189,6 +191,46 @@ export default function HomePage() {
       document.getElementById('tab-content')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
   }
+   function openTab(t: Tab) { setTab(t); setFabOpen(false); } // scroll is handled by the [tab] effect below (post-commit, so the panel is mounted before we measure it)
+  function toggleTab(t: Tab) { if (tab === t) setTab(null); else openTab(t); } // press active tab again -> back to landing
+
+  // Deep link: /?trip=ID opens the Plan tab AFTER hydration (never during render -> no SSR mismatch).
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (new URLSearchParams(window.location.search).has('trip')) setTab('plan');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Glide to the opened panel AFTER React has committed it to the DOM. The old code scrolled from
+  // inside the click handler via requestAnimationFrame, which ran BEFORE the panel mounted, so it
+  // measured an empty #tab-content and stopped short (planner ended up below the fold). Keying the
+  // scroll to [tab] guarantees the real height exists; #tab-content's scroll-mt-40 then lands the
+  // planner header exactly under the sticky nav + tab bar.
+  useEffect(() => {
+    if (!tab) return;
+    const el = document.getElementById('tab-content');
+    if (!el) return;
+    // Match #tab-content's scroll-mt-* so we land exactly under the sticky nav + tab bar.
+    const OFFSET = parseFloat(getComputedStyle(el).scrollMarginTop) || 160;
+    const topOf = () => el.getBoundingClientRect().top + window.scrollY - OFFSET;
+    const glide = requestAnimationFrame(() => window.scrollTo({ top: topOf(), behavior: 'smooth' }));
+    // Settle guard: if a child effect or a late-loading image shifted the page mid-glide,
+    // re-assert the exact flush position once the smooth animation has finished. This is what
+    // makes the hero button land as cleanly as the tab buttons (which never got interrupted
+    // because the board was already in view).
+    const settle = window.setTimeout(() => {
+      if (Math.abs(window.scrollY - topOf()) > 4) window.scrollTo({ top: topOf(), behavior: 'auto' });
+    }, 520);
+    return () => { cancelAnimationFrame(glide); clearTimeout(settle); };
+  }, [tab]);
+
+  // Deep link: /?trip=ID (cockpit's "Edit in planner") must land IN the planner, not on the
+  // landing. Open the Plan tab on mount; PlanTab then selects that trip and scrolls to itself.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (new URLSearchParams(window.location.search).has('trip')) setTab('plan');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
@@ -229,6 +271,9 @@ export default function HomePage() {
       <div className="pointer-events-none fixed top-1/3 -right-40 w-[30rem] h-[30rem] rounded-full bg-sky-300/25 blur-3xl z-0" />
       <div className="pointer-events-none fixed -bottom-40 left-1/3 w-[32rem] h-[32rem] rounded-full bg-fuchsia-300/20 blur-3xl z-0" />
 
+      {/* Business-owner / place-approved login popup (returns null until a status transition fires) */}
+      <BusinessOnboarding />
+
       {/* Welcome / landing — content adapts to newcomer vs returning vs veteran vs guest */}
       <LandingHero
         tier={tier}
@@ -239,8 +284,8 @@ export default function HomePage() {
         activeTotal={activeTotal}
         topPicks={topPicks}
         trendingChips={trendingChips}
-        onStartPlan={() => { setTab('plan'); scrollToTabContent(); }}
-        onExplore={() => { setTab('discover'); scrollToTabContent(); }}
+        onOpenTab={(t) => openTab(t)}
+        catalogStats={{ places: explore.length, destinations: allDests.length, regions: trending.length }}
         searchSlot={<SmartSearch placeholder='Where to? Try "Japan", "Kyoto", or "Palawan"' />}
       />
 
@@ -251,7 +296,7 @@ export default function HomePage() {
             const active = tab === t.id;
             const badge = t.id === 'plan' ? needsReviewCount : t.id === 'discover' ? explore.length : 0;
             return (
-              <button key={t.id} type="button" onClick={() => { setTab(t.id); setFabOpen(false); scrollToTabContent(); }} className={`flex-1 relative flex items-center justify-center gap-2 px-4 py-3 rounded-2xl text-sm font-black tracking-wide transition-all duration-300 active:scale-95 ${active ? PILL_ACTIVE : 'text-slate-500 hover:text-violet-600'}`}>
+              <button key={t.id} type="button" onClick={() => toggleTab(t.id)} className={`flex-1 relative flex items-center justify-center gap-2 px-4 py-3 rounded-2xl text-sm font-black tracking-wide whitespace-nowrap transition-all duration-300 active:scale-95 ${active ? PILL_ACTIVE : 'text-slate-500 hover:text-violet-600'}`}>
                 <span className="relative flex items-center gap-2">{t.icon}{t.label}</span>
                 {badge > 0 && <span className={`relative min-w-[1.25rem] h-5 px-1.5 rounded-full text-[10px] font-black flex items-center justify-center ${active ? 'bg-white/25 text-white' : t.id === 'plan' ? 'bg-amber-100 text-amber-600' : 'bg-violet-100 text-violet-600'}`}>{badge > 99 ? '99+' : badge}</span>}
               </button>
@@ -262,13 +307,13 @@ export default function HomePage() {
 
       {/* Tab content */}
       <section id="tab-content" className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-8 w-full flex-1 scroll-mt-40">
-        {!ready && userId ? (
-          <div className="space-y-4">{[0, 1, 2].map((i) => <div key={i} className={`h-40 rounded-3xl ${INSET} animate-pulse`} />)}</div>
+        {tab === null ? null : !ready && userId ? (
+          <div className="space-y-4 animate-in fade-in duration-500">{[0, 1, 2].map((i) => <div key={i} className={`h-40 rounded-3xl ${INSET} animate-pulse`} />)}</div>
         ) : (
-          <div key={tab} className="animate-fade-in-up">
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
             {tab === 'plan' && <PlanTab userId={userId} trips={trips} refreshTrips={refreshTrips} explore={explore} schedMap={schedMap} allDests={allDests} tripReviewMap={tripReviewMap} onReviewed={() => setReviewVersion((v) => v + 1)} />}
             {tab === 'discover' && <DiscoverTab explore={explore} recs={recs} hasPersonal={hasPersonal} trending={trending} recent={recent} descMap={descMap} subtypeMap={subtypeMap} destExtra={destExtra} goSearch={goSearch} />}
-            {tab === 'tools' && <ToolsTab forecast={forecast} forecastLocation={forecastLocation} trips={trips} tripReviewMap={tripReviewMap} userId={userId} onGoPlan={() => { setTab('plan'); scrollToTabContent(); }} />}
+            {tab === 'tools' && <ToolsTab forecast={forecast} forecastLocation={forecastLocation} trips={trips} tripReviewMap={tripReviewMap} userId={userId} onGoPlan={() => openTab('plan')} />}
           </div>
         )}
       </section>
@@ -277,7 +322,7 @@ export default function HomePage() {
       <div className="fixed bottom-6 right-6 z-40 md:hidden">
         {fabOpen && (
           <div className="absolute bottom-16 right-0 w-48 space-y-2 animate-slide-up">
-            {[{ l: 'Plan', i: <RouteIcon className="w-4 h-4" />, a: () => { setTab('plan'); scrollToTabContent(); } }, { l: 'Discover', i: <CompassIcon className="w-4 h-4" />, a: () => { setTab('discover'); scrollToTabContent(); } }, { l: 'Search', i: <SparkleIcon className="w-4 h-4" />, a: () => router.push('/search') }].map((m) => (
+            {[{ l: 'Plan', i: <RouteIcon className="w-4 h-4" />, a: () => openTab('plan') }, { l: 'Discover', i: <CompassIcon className="w-4 h-4" />, a: () => openTab('discover') }, { l: 'Search', i: <SparkleIcon className="w-4 h-4" />, a: () => router.push('/search') }].map((m) => (
               <button key={m.l} type="button" onClick={() => { m.a(); setFabOpen(false); }} className={`w-full ${NEU} rounded-2xl px-4 py-3 flex items-center gap-3 text-sm font-black text-slate-700 ${FLOAT_SHADOW} active:scale-95 transition`}>{m.i}{m.l}</button>
             ))}
           </div>
