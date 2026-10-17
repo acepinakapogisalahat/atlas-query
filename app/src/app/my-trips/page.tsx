@@ -39,12 +39,13 @@ type BookingRow = {
 
 function CalendarIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className ?? 'w-4 h-4'}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className ?? 'w-5 h-5'}>
       <rect x="3" y="5" width="18" height="16" rx="2" />
       <path d="M8 3v4M16 3v4M3 10h18" strokeLinecap="round" />
     </svg>
   );
 }
+
 function CheckIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className ?? 'w-4 h-4'}>
@@ -64,15 +65,20 @@ function dayRange(start: string | null, end: string | null): string[] {
   for (const d = new Date(d0); d <= d1; d.setDate(d.getDate() + 1)) out.push(d.toISOString().slice(0, 10));
   return out;
 }
+
 function stopIdxForDate(start: string | null, stops: { label: string; days: number }[], date: string): number {
   if (!start || !stops.length) return 0;
   const off = Math.floor((new Date(date + 'T00:00:00').getTime() - new Date(start + 'T00:00:00').getTime()) / 86400000);
   let cur = 0;
-  for (let i = 0; i < stops.length; i++) { const n = Math.max(1, stops[i].days || 1); if (off >= cur && off < cur + n) return i; cur += n; }
+  for (let i = 0; i < stops.length; i++) { 
+    const n = Math.max(1, stops[i].days || 1); 
+    if (off >= cur && off < cur + n) return i; 
+    cur += n; 
+  }
   return stops.length - 1;
 }
 
-/* Condensed, decorative roadmap — same stop-tinting language as the planner board. */
+/* Condensed, decorative roadmap */
 function MiniRoadmap({ trip, todayISO }: { trip: TripRow; todayISO: string }) {
   const days = dayRange(trip.start_date, trip.end_date);
   if (!days.length) return null;
@@ -80,7 +86,7 @@ function MiniRoadmap({ trip, todayISO }: { trip: TripRow; todayISO: string }) {
   const placeDays = new Set(trip.items.filter((i) => !i.isNote && i.planned_date).map((i) => i.planned_date as string));
   const shown: (string | null)[] = days.length > 16 ? [...days.slice(0, 9), null, ...days.slice(days.length - 6)] : days;
   return (
-    <div className="flex items-center overflow-hidden py-1" aria-hidden="true" title={`${days.length} day${days.length === 1 ? '' : 's'} · ${placeDays.size} with plans`}>
+    <div className="flex items-center overflow-hidden py-2" aria-hidden="true" title={`${days.length} day${days.length === 1 ? '' : 's'} · ${placeDays.size} with plans`}>
       {shown.map((d, i) => {
         if (d === null) return <span key={`e${i}`} className="shrink-0 px-1 text-[10px] font-black leading-none text-slate-300">···</span>;
         const si = stopIdxForDate(trip.start_date, stops, d);
@@ -89,8 +95,8 @@ function MiniRoadmap({ trip, todayISO }: { trip: TripRow; todayISO: string }) {
         const prev = shown[i - 1];
         return (
           <Fragment key={d}>
-            {i > 0 && prev !== null && <span className={`h-0.5 w-2 sm:w-3 shrink-0 rounded-full ${STOP_LINE[si % STOP_LINE.length]}`} />}
-            <span className={`relative w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 rounded-full border-2 ${STOP_BORDER[si % STOP_BORDER.length]} ${filled ? STOP_FILL[si % STOP_FILL.length] : 'bg-white'} ${isToday ? 'ring-2 ring-emerald-400 ring-offset-1 ring-offset-white' : ''}`} />
+            {i > 0 && prev !== null && <span className={`h-1 w-2 sm:w-4 shrink-0 rounded-full ${STOP_LINE[si % STOP_LINE.length]}`} />}
+            <span className={`relative w-4 h-4 sm:w-5 sm:h-5 shrink-0 rounded-full border-2 ${STOP_BORDER[si % STOP_BORDER.length]} ${filled ? STOP_FILL[si % STOP_FILL.length] : 'bg-white'} ${isToday ? 'ring-2 ring-emerald-400 ring-offset-1 ring-offset-white' : ''}`} />
           </Fragment>
         );
       })}
@@ -101,9 +107,9 @@ function MiniRoadmap({ trip, todayISO }: { trip: TripRow; todayISO: string }) {
 function StatTile({ label, value, tone }: { label: string; value: string; tone?: 'amber' | 'emerald' | 'slate' }) {
   const num = tone === 'amber' ? 'text-amber-600' : tone === 'emerald' ? 'text-emerald-600' : `${GRAD_TEXT}`;
   return (
-    <div className={`rounded-2xl ${INSET} px-4 py-3.5 text-center`}>
-      <p className={`text-xl font-black tabular-nums leading-none ${num}`}>{value}</p>
-      <p className="mt-1.5 text-[9px] font-black uppercase tracking-[0.14em] text-slate-400">{label}</p>
+    <div className={`rounded-2xl ${INSET} px-4 py-4 text-center border border-white/60`}>
+      <p className={`text-2xl font-black tabular-nums leading-none ${num}`}>{value}</p>
+      <p className="mt-2 text-xs font-bold uppercase tracking-wider text-slate-500">{label}</p>
     </div>
   );
 }
@@ -115,7 +121,7 @@ function bookingChip(status: string | null) {
     : s === 'rejected' ? 'bg-rose-50 text-rose-700 border-rose-200/80'
     : s === 'cancelled' ? 'bg-slate-100 text-slate-600 border-slate-200/80'
     : 'bg-amber-50 text-amber-700 border-amber-200/80';
-  return <span className={`shrink-0 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${cls}`}>{s}</span>;
+  return <span className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider border ${cls}`}>{s}</span>;
 }
 
 export default function MyTripsPage() {
@@ -221,10 +227,10 @@ export default function MyTripsPage() {
   if (role.loading || loading) {
     return (
       <main className={`${CANVAS} min-h-screen pb-16 page-enter`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-          <div className={`${GLASS} rounded-2xl h-20 mb-6 animate-pulse`} />
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-8">{[0, 1, 2, 3, 4].map((i) => <div key={i} className={`${INSET} rounded-2xl h-20 animate-pulse`} />)}</div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">{[0, 1, 2].map((i) => <div key={i} className={`${INSET} rounded-2xl h-56 animate-pulse`} />)}</div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 pt-32">
+          <div className={`${GLASS} rounded-2xl h-24 mb-6 animate-pulse`} />
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">{[0, 1, 2, 3, 4].map((i) => <div key={i} className={`${INSET} rounded-2xl h-24 animate-pulse`} />)}</div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">{[0, 1, 2].map((i) => <div key={i} className={`${INSET} rounded-2xl h-64 animate-pulse`} />)}</div>
         </div>
       </main>
     );
@@ -233,14 +239,14 @@ export default function MyTripsPage() {
   // ---- signed out ----
   if (!role.authId) {
     return (
-      <main className={`${CANVAS} min-h-screen flex items-center justify-center p-8 page-enter`}>
-        <div className="rounded-[2rem] bg-white/85 px-8 py-12 text-center max-w-md w-full shadow-[0_18px_44px_-16px_rgba(110,120,190,0.4)]">
-          <GlassWellIcon gradient="from-indigo-500 to-violet-500" size="lg"><MapIcon className="w-7 h-7" /></GlassWellIcon>
-          <h1 className="text-2xl font-black text-slate-800 mt-5 mb-2">My trips & bookings</h1>
-          <p className="text-sm text-slate-500 mb-7">Sign in to see everything you've planned, booked, and reviewed.</p>
-          <div className="flex justify-center gap-3">
-            <Link href="/login" className={`${BTN_PRIMARY} px-6 py-3 text-sm`}><span className="relative">Sign in</span></Link>
-            <Link href="/signup" className={`${BTN_GHOST} px-6 py-3 text-sm`}>Create account</Link>
+      <main className={`${CANVAS} min-h-screen flex items-center justify-center p-8 page-enter pt-32`}>
+        <div className="rounded-[2rem] bg-white/85 px-8 py-14 text-center max-w-md w-full shadow-[0_18px_44px_-16px_rgba(110,120,190,0.4)] border border-white/60">
+          <GlassWellIcon gradient="from-indigo-500 to-violet-500" size="lg"><MapIcon className="w-8 h-8" /></GlassWellIcon>
+          <h1 className="text-2xl font-black text-slate-800 mt-6 mb-3">My trips & bookings</h1>
+          <p className="text-base text-slate-500 mb-8 leading-relaxed">Sign in to see everything you've planned, booked, and reviewed.</p>
+          <div className="flex flex-col sm:flex-row justify-center gap-4">
+            <Link href="/login" className={`${BTN_PRIMARY} px-8 py-3.5 text-sm font-bold`}><span className="relative">Sign in</span></Link>
+            <Link href="/signup" className={`${BTN_GHOST} px-8 py-3.5 text-sm font-bold`}>Create account</Link>
           </div>
         </div>
       </main>
@@ -264,47 +270,52 @@ export default function MyTripsPage() {
   const filterCount = (f: typeof tripFilter) => (f === 'all' ? trips.length : trips.filter((t) => getTripStatus(t) === f).length);
 
   return (
-    <main className={`${CANVAS} min-h-screen pb-16 page-enter`}>
+    <main className={`${CANVAS} min-h-screen pb-16 page-enter relative`}>
       <style>{`
         @keyframes tmPopM { from { opacity: 0; transform: translateY(10px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
         .tm-pop-m { animation: tmPopM .45s cubic-bezier(.22,.9,.32,1) both; }
       `}</style>
-      <div className="pointer-events-none fixed -top-32 -left-32 w-[34rem] h-[34rem] rounded-full bg-violet-300/25 blur-3xl z-0" />
-      <div className="pointer-events-none fixed top-1/3 -right-40 w-[30rem] h-[30rem] rounded-full bg-sky-300/20 blur-3xl z-0" />
+      
+      {/* Decorative blur elements - safely contained in background */}
+      <div className="pointer-events-none fixed top-0 left-0 w-full h-full overflow-hidden z-0">
+        <div className="absolute -top-32 -left-32 w-[34rem] h-[34rem] rounded-full bg-violet-300/20 blur-3xl" />
+        <div className="absolute top-1/3 -right-40 w-[30rem] h-[30rem] rounded-full bg-sky-300/15 blur-3xl" />
+      </div>
 
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-10">
+      {/* Increased top padding (pt-28 md:pt-32) to clear the global navbar */}
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 md:pt-32 pb-10">
 
         {/* Mission bar */}
-        <div className="sticky top-24 z-30 mb-6">
-          <div className={`${GLASS} rounded-2xl px-4 py-3.5 md:px-5 shadow-[0_16px_40px_-18px_rgba(110,120,190,0.5)] backdrop-blur-xl`}>
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <div className="mb-8">
+          <div className={`${GLASS} rounded-2xl px-5 py-5 md:px-6 shadow-lg backdrop-blur-xl border border-white/60`}>
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-4">
               <div className="min-w-0 flex-1">
-                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-violet-600">Traveler HQ</p>
-                <h1 className="text-lg md:text-xl font-black tracking-tight text-slate-800 truncate leading-tight">My trips & bookings</h1>
+                <p className="text-xs font-bold uppercase tracking-wider text-violet-600 mb-1">Traveler HQ</p>
+                <h1 className="text-xl md:text-2xl font-black tracking-tight text-slate-800 truncate leading-tight">My trips & bookings</h1>
               </div>
-              <div className="hidden sm:flex items-center gap-2 shrink-0 text-[11px] font-black text-slate-500">
-                <span className="px-2.5 py-1 rounded-full bg-white/70 border border-white/80 tabular-nums">{activeTrips.length} active</span>
-                <span className="px-2.5 py-1 rounded-full bg-white/70 border border-white/80 tabular-nums">{finishedTrips.length} finished</span>
-                {pendingReviews > 0 && <span className="px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200/80 text-amber-700 tabular-nums">{pendingReviews} to review</span>}
+              <div className="flex items-center gap-3 shrink-0 text-xs font-bold text-slate-600">
+                <span className="px-3 py-1.5 rounded-full bg-white/70 border border-white/80 tabular-nums">{activeTrips.length} active</span>
+                <span className="px-3 py-1.5 rounded-full bg-white/70 border border-white/80 tabular-nums">{finishedTrips.length} finished</span>
+                {pendingReviews > 0 && <span className="px-3 py-1.5 rounded-full bg-amber-50 border border-amber-200/80 text-amber-700 tabular-nums">{pendingReviews} to review</span>}
               </div>
-              <div className="flex items-center gap-1.5 shrink-0">
-                <Link href="/" className={`${BTN_PRIMARY} px-4 py-2.5 text-xs`}><span className="relative flex items-center gap-1.5"><PlusIcon className="w-4 h-4" />Plan a trip</span></Link>
-                <Link href="/" className={`${BTN_GHOST} px-3 py-2.5 text-xs whitespace-nowrap`}>Dashboard</Link>
+              <div className="flex items-center gap-3 shrink-0">
+                <Link href="/" className={`${BTN_PRIMARY} px-5 py-3 text-sm font-bold`}><span className="relative flex items-center gap-2"><PlusIcon className="w-4 h-4" />Plan a trip</span></Link>
+                <Link href="/" className={`${BTN_GHOST} px-5 py-3 text-sm font-bold whitespace-nowrap`}>Dashboard</Link>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Review alert — mt-[92px] clears the sticky mission bar (~88px tall incl. padding) */}
+        {/* Review alert */}
         {pendingReviews > 0 && (
-          <div className="mt-[92px] mb-6 flex items-center gap-3 p-4 rounded-2xl bg-amber-50/80 border border-amber-200/70 relative z-20">
-            <GlassWellIcon gradient="from-amber-400 to-orange-500"><Star className="w-5 h-5" /></GlassWellIcon>
-            <p className="flex-1 text-sm font-bold text-amber-700">{pendingReviews} finished trip{pendingReviews === 1 ? '' : 's'} still need{pendingReviews === 1 ? 's' : ''} reviews — rate the places you visited to help other travelers.</p>
+          <div className="mb-6 flex items-center gap-4 p-5 rounded-2xl bg-amber-50/90 border border-amber-200/80 shadow-sm">
+            <GlassWellIcon gradient="from-amber-400 to-orange-500"><Star className="w-6 h-6" /></GlassWellIcon>
+            <p className="flex-1 text-sm font-semibold text-amber-800 leading-relaxed">{pendingReviews} finished trip{pendingReviews === 1 ? '' : 's'} still need{pendingReviews === 1 ? 's' : ''} reviews — rate the places you visited to help other travelers.</p>
           </div>
         )}
 
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
           <StatTile label="Active trips" value={String(activeTrips.length)} />
           <StatTile label="Finished" value={String(finishedTrips.length)} tone="slate" />
           <StatTile label="Bookings" value={String(bookings.length)} tone="emerald" />
@@ -313,31 +324,31 @@ export default function MyTripsPage() {
         </div>
 
         {/* Tabs */}
-        <div className={`${GLASS} rounded-2xl p-1 inline-flex gap-1 mb-5`}>
-          {([['trips', `Trips ${trips.length}`, <RouteIcon key="r" className="w-4 h-4" />], ['bookings', `Bookings ${bookings.length}`, <CalendarIcon key="c" className="w-4 h-4" />]] as const).map(([id, label, ic]) => (
-            <button key={id} type="button" onClick={() => setTab(id)} className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-black tracking-wide whitespace-nowrap transition active:scale-95 ${tab === id ? PILL_ACTIVE : 'text-slate-500 hover:text-violet-600'}`}>
-              <span className="relative flex items-center gap-1.5">{ic}{label}</span>
+        <div className={`${GLASS} rounded-2xl p-1.5 inline-flex gap-1.5 mb-6 border border-white/60`}>
+          {([['trips', `Trips (${trips.length})`, <RouteIcon key="r" className="w-4 h-4" />], ['bookings', `Bookings (${bookings.length})`, <CalendarIcon key="c" className="w-4 h-4" />]] as const).map(([id, label, ic]) => (
+            <button key={id} type="button" onClick={() => setTab(id)} className={`flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-bold tracking-wide whitespace-nowrap transition active:scale-95 ${tab === id ? PILL_ACTIVE : 'text-slate-500 hover:text-violet-600 hover:bg-white/50'}`}>
+              <span className="relative flex items-center gap-2">{ic}{label}</span>
             </button>
           ))}
         </div>
 
         {tab === 'trips' ? (
           trips.length === 0 ? (
-            <div className={`${GLASS} rounded-[2rem] p-10 text-center`}>
-              <EmptyBox icon={<MapIcon className="w-6 h-6" />} title="No trips yet" sub="Create your first trip on the dashboard and start saving places into a day-by-day plan." />
-              <Link href="/" className={`mt-6 inline-block ${BTN_PRIMARY} px-6 py-3 text-sm`}><span className="relative flex items-center gap-1.5"><PlusIcon className="w-4 h-4" />Open trip planner</span></Link>
+            <div className={`${GLASS} rounded-[2rem] p-12 text-center border border-white/60`}>
+              <EmptyBox icon={<MapIcon className="w-8 h-8" />} title="No trips yet" sub="Create your first trip on the dashboard and start saving places into a day-by-day plan." />
+              <Link href="/" className={`mt-8 inline-block ${BTN_PRIMARY} px-8 py-3.5 text-sm font-bold`}><span className="relative flex items-center gap-2"><PlusIcon className="w-5 h-5" />Open trip planner</span></Link>
             </div>
           ) : (
             <>
-              <div className="flex flex-wrap gap-1.5 mb-5">
+              <div className="flex flex-wrap gap-2 mb-6">
                 {(['all', 'upcoming', 'ongoing', 'finished'] as const).map((f) => (
-                  <button key={f} type="button" onClick={() => setTripFilter(f)} className={`px-3.5 py-2 rounded-xl text-[11px] font-black tracking-wide whitespace-nowrap transition active:scale-95 ${tripFilter === f ? PILL_ACTIVE : `${NEU_SM} text-slate-500 hover:text-violet-600`}`}>
+                  <button key={f} type="button" onClick={() => setTripFilter(f)} className={`px-4 py-2.5 rounded-xl text-xs font-bold tracking-wide whitespace-nowrap transition active:scale-95 ${tripFilter === f ? PILL_ACTIVE : `${NEU_SM} text-slate-600 hover:text-violet-600 hover:bg-white/60`}`}>
                     <span className="relative">{f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1)} {filterCount(f)}</span>
                   </button>
                 ))}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
                 {filteredTrips.map((t, ti) => {
                   const st = getTripStatus(t);
                   const nr = needsReview(t);
@@ -348,47 +359,47 @@ export default function MyTripsPage() {
                   return (
                     <article
                       key={t.trip_id}
-                      className={`relative rounded-2xl p-5 pl-6 tm-pop-m transition hover:-translate-y-0.5 ${
-                        fr ? 'bg-white/45 border border-white/70 opacity-70 saturate-[.75] hover:opacity-95' : `${GLASS} hover:shadow-[0_16px_40px_-16px_rgba(110,120,190,0.5)]`
+                      className={`relative rounded-2xl p-6 pl-7 tm-pop-m transition hover:-translate-y-1 hover:shadow-xl ${
+                        fr ? 'bg-white/60 border border-white/80 opacity-80 saturate-[.85] hover:opacity-100' : `${GLASS} hover:shadow-[0_20px_40px_-16px_rgba(110,120,190,0.6)] border border-white/60`
                       }`}
                       style={{ animationDelay: `${Math.min(ti, 12) * 45}ms` }}
                     >
-                      <span className={`absolute left-0 top-5 bottom-5 w-1.5 rounded-r-full ${fr ? 'bg-slate-300' : stripe}`} aria-hidden="true" />
+                      <span className={`absolute left-0 top-6 bottom-6 w-1.5 rounded-r-full ${fr ? 'bg-slate-300' : stripe}`} aria-hidden="true" />
 
-                      <div className="flex items-start gap-3 mb-1">
-                        <span className={`w-11 h-11 shrink-0 rounded-2xl ${fr ? 'bg-slate-200 text-slate-400' : `bg-gradient-to-br ${GRAD} text-white shadow-md`} flex items-center justify-center`}><RouteIcon className="w-5 h-5" /></span>
+                      <div className="flex items-start gap-4 mb-2">
+                        <span className={`w-12 h-12 shrink-0 rounded-2xl ${fr ? 'bg-slate-200 text-slate-400' : `bg-gradient-to-br ${GRAD} text-white shadow-md`} flex items-center justify-center`}><RouteIcon className="w-6 h-6" /></span>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <p className={`font-black text-base truncate ${fr ? 'text-slate-500' : 'text-slate-800'}`}>{t.trip_name ?? `Trip ${t.trip_id}`}</p>
-                            <span className={`shrink-0 w-2 h-2 rounded-full ${st === 'ongoing' ? 'bg-sky-500 animate-pulse' : st === 'finished' ? 'bg-slate-400' : 'bg-emerald-500'}`} />
+                            <p className={`font-black text-lg truncate ${fr ? 'text-slate-500' : 'text-slate-800'}`}>{t.trip_name ?? `Trip ${t.trip_id}`}</p>
+                            <span className={`shrink-0 w-2.5 h-2.5 rounded-full ${st === 'ongoing' ? 'bg-sky-500 animate-pulse' : st === 'finished' ? 'bg-slate-400' : 'bg-emerald-500'}`} />
                           </div>
-                          <p className="text-[11px] font-bold text-slate-500 truncate tabular-nums">{fmtDate(t.start_date)} → {fmtDate(t.end_date)}</p>
+                          <p className="text-xs font-semibold text-slate-500 truncate tabular-nums mt-0.5">{fmtDate(t.start_date)} → {fmtDate(t.end_date)}</p>
                         </div>
-                        <span className={`shrink-0 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border ${statusPill(st)}`}>{st}</span>
+                        <span className={`shrink-0 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${statusPill(st)}`}>{st}</span>
                       </div>
 
-                      <p className="text-[11px] font-semibold text-slate-400 mb-1">{placeItems.length} place{placeItems.length === 1 ? '' : 's'}{t.stops.length ? ` · ${t.stops.length} stop${t.stops.length === 1 ? '' : 's'}` : ''}</p>
+                      <p className="text-xs font-semibold text-slate-500 mb-2">{placeItems.length} place{placeItems.length === 1 ? '' : 's'}{t.stops.length ? ` · ${t.stops.length} stop${t.stops.length === 1 ? '' : 's'}` : ''}</p>
 
                       <MiniRoadmap trip={t} todayISO={todayISO} />
 
                       {st === 'finished' && t.placesCount > 0 && (
-                        <div className="mt-2">
-                          <div className="flex items-center justify-between text-[10px] font-black text-slate-500 mb-1"><span>Reviews</span><span className="tabular-nums">{t.reviewedCount}/{t.placesCount}</span></div>
-                          <div className={`${INSET} w-full h-2 rounded-full overflow-hidden`}><div className={`h-full rounded-full transition-all duration-700 ${GLOSS} ${fr ? 'bg-gradient-to-r from-emerald-400 to-teal-500' : `bg-gradient-to-r ${GRAD}`}`} style={{ width: `${progress}%` }} /></div>
+                        <div className="mt-3">
+                          <div className="flex items-center justify-between text-xs font-bold text-slate-600 mb-1.5"><span>Reviews</span><span className="tabular-nums">{t.reviewedCount}/{t.placesCount}</span></div>
+                          <div className={`${INSET} w-full h-2.5 rounded-full overflow-hidden border border-white/50`}><div className={`h-full rounded-full transition-all duration-700 ${GLOSS} ${fr ? 'bg-gradient-to-r from-emerald-400 to-teal-500' : `bg-gradient-to-r ${GRAD}`}`} style={{ width: `${progress}%` }} /></div>
                         </div>
                       )}
 
-                      <div className="mt-4 flex items-center justify-between gap-3">
+                      <div className="mt-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div className="min-w-0 flex items-center gap-2">
-                          {nr && <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200/80 text-[10px] font-black uppercase tracking-wider text-amber-700 whitespace-nowrap"><span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />Needs review</span>}
-                          {fr && <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-400 whitespace-nowrap"><CheckIcon className="w-3.5 h-3.5" />Reviewed</span>}
-                          {!nr && !fr && <span className="text-[11px] font-bold text-slate-400 truncate">{st === 'ongoing' ? 'In progress' : 'Ready to plan'}</span>}
+                          {nr && <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-50 border border-amber-200/80 text-[11px] font-black uppercase tracking-wider text-amber-700 whitespace-nowrap"><span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />Needs review</span>}
+                          {fr && <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 whitespace-nowrap"><CheckIcon className="w-4 h-4 text-emerald-500" />Fully reviewed</span>}
+                          {!nr && !fr && <span className="text-xs font-bold text-slate-500 truncate">{st === 'ongoing' ? 'In progress' : 'Ready to plan'}</span>}
                         </div>
-                        <div className="flex items-center gap-1.5 shrink-0">
+                        <div className="flex items-center gap-2 shrink-0">
                           {nr ? (
-                            <Link href={`/my-trips/${t.trip_id}/review`} className={`${BTN_PRIMARY} px-3.5 py-2.5 text-[11px]`} style={{ backgroundImage: 'linear-gradient(to right,#f59e0b,#f97316)' }}><span className="relative flex items-center gap-1.5"><Star className="w-3.5 h-3.5" />Review {t.placesCount - t.reviewedCount}</span></Link>
+                            <Link href={`/my-trips/${t.trip_id}/review`} className={`px-4 py-2.5 rounded-xl text-xs font-bold text-white shadow-md hover:shadow-lg transition flex items-center gap-2`} style={{ backgroundImage: 'linear-gradient(to right,#f59e0b,#f97316)' }}><span className="relative flex items-center gap-1.5"><Star className="w-4 h-4" />Review {t.placesCount - t.reviewedCount}</span></Link>
                           ) : null}
-                          <Link href={`/?trip=${t.trip_id}`} className={`${nr ? BTN_GHOST : BTN_PRIMARY} px-3.5 py-2.5 text-[11px] whitespace-nowrap`}><span className="relative flex items-center gap-1.5"><MapIcon className="w-3.5 h-3.5" />Open board</span></Link>
+                          <Link href={`/?trip=${t.trip_id}`} className={`px-4 py-2.5 rounded-xl text-xs font-bold ${nr ? 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 shadow-sm' : `${BTN_PRIMARY} shadow-md`} transition flex items-center gap-2`}><span className="relative flex items-center gap-1.5"><MapIcon className="w-4 h-4" />Open board</span></Link>
                         </div>
                       </div>
                     </article>
@@ -397,34 +408,47 @@ export default function MyTripsPage() {
               </div>
 
               {filteredTrips.length === 0 && (
-                <div className={`${GLASS} rounded-2xl p-10 text-center`}><p className="text-sm font-semibold text-slate-500">No trips match this filter.</p></div>
+                <div className={`${GLASS} rounded-2xl p-12 text-center border border-white/60`}><p className="text-base font-semibold text-slate-500">No trips match this filter.</p></div>
               )}
             </>
           )
         ) : bookings.length === 0 ? (
-          <div className={`${GLASS} rounded-[2rem] p-10 text-center`}>
-            <EmptyBox icon={<CalendarIcon className="w-6 h-6" />} title="No booking requests yet" sub="When you request dates on a listing, the request and its status will show up here." />
-            <Link href="/search" className={`mt-6 inline-block ${BTN_PRIMARY} px-6 py-3 text-sm`}><span className="relative flex items-center gap-1.5"><MapIcon className="w-4 h-4" />Browse places</span></Link>
+          <div className={`${GLASS} rounded-[2rem] p-12 text-center border border-white/60`}>
+            <EmptyBox icon={<CalendarIcon className="w-8 h-8" />} title="No booking requests yet" sub="When you request dates on a listing, the request and its status will show up here." />
+            <Link href="/search" className={`mt-8 inline-block ${BTN_PRIMARY} px-8 py-3.5 text-sm font-bold`}><span className="relative flex items-center gap-2"><MapIcon className="w-5 h-5" />Browse places</span></Link>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {bookings.map((b, bi) => {
               const pending = (b.status ?? 'pending') === 'pending';
               return (
-                <div key={b.booking_id} className={`relative rounded-2xl ${GLASS} p-4 pl-5 flex items-center gap-4 tm-pop-m transition hover:-translate-y-0.5`} style={{ animationDelay: `${Math.min(bi, 12) * 40}ms` }}>
-                  <span className={`absolute left-0 top-4 bottom-4 w-1.5 rounded-r-full ${pending ? 'bg-gradient-to-b from-amber-400 to-orange-400' : b.status === 'confirmed' ? 'bg-gradient-to-b from-emerald-400 to-teal-500' : b.status === 'rejected' ? 'bg-gradient-to-b from-rose-400 to-red-500' : 'bg-slate-300'}`} aria-hidden="true" />
-                  {b.image_url ? (<img src={b.image_url} alt="" className="w-14 h-14 rounded-xl object-cover shrink-0 shadow-md" />) : (<div className={`w-14 h-14 rounded-xl shrink-0 bg-gradient-to-br from-indigo-100 to-violet-100 flex items-center justify-center text-violet-400 font-black`}>{(b.listing_name ?? 'P').charAt(0)}</div>)}
+                <div key={b.booking_id} className={`relative rounded-2xl ${GLASS} p-5 pl-6 flex flex-col sm:flex-row sm:items-center gap-4 tm-pop-m transition hover:-translate-y-1 hover:shadow-xl border border-white/60`} style={{ animationDelay: `${Math.min(bi, 12) * 40}ms` }}>
+                  <span className={`absolute left-0 top-5 bottom-5 w-1.5 rounded-r-full ${pending ? 'bg-gradient-to-b from-amber-400 to-orange-400' : b.status === 'confirmed' ? 'bg-gradient-to-b from-emerald-400 to-teal-500' : b.status === 'rejected' ? 'bg-gradient-to-b from-rose-400 to-red-500' : 'bg-slate-300'}`} aria-hidden="true" />
+                  {b.image_url ? (
+                    <img src={b.image_url} alt="" className="w-16 h-16 rounded-xl object-cover shrink-0 shadow-md border border-white/50" />
+                  ) : (
+                    <div className={`w-16 h-16 rounded-xl shrink-0 bg-gradient-to-br from-indigo-100 to-violet-100 flex items-center justify-center text-violet-500 font-black text-lg border border-white/60`}>
+                      {(b.listing_name ?? 'P').charAt(0)}
+                    </div>
+                  )}
                   <div className="flex-1 min-w-0">
-                    <p className="font-black text-slate-800 text-sm truncate">{b.listing_name ?? b.listing_id}</p>
-                    <p className="text-[11px] font-semibold text-slate-500 truncate tabular-nums">{b.listing_type ?? 'Place'} · {fmtDate(b.check_in)} → {fmtDate(b.check_out)} · {b.guests ?? 1} guest{(b.guests ?? 1) === 1 ? '' : 's'}</p>
-                    {b.special_requests && <p className="text-[11px] font-medium text-slate-400 mt-0.5 truncate italic">"{b.special_requests}"</p>}
+                    <p className="font-black text-slate-800 text-base truncate">{b.listing_name ?? b.listing_id}</p>
+                    <p className="text-xs font-semibold text-slate-500 truncate tabular-nums mt-1">{b.listing_type ?? 'Place'} · {fmtDate(b.check_in)} → {fmtDate(b.check_out)} · {b.guests ?? 1} guest{(b.guests ?? 1) === 1 ? '' : 's'}</p>
+                    {b.special_requests && <p className="text-xs font-medium text-slate-500 mt-1.5 truncate italic bg-slate-50 p-2 rounded-lg border border-slate-100">"{b.special_requests}"</p>}
                   </div>
-                  <div className="flex flex-col items-end gap-1.5 shrink-0">
+                  <div className="flex flex-col sm:items-end gap-3 shrink-0 mt-2 sm:mt-0">
                     {bookingChip(b.status)}
-                    <div className="flex items-center gap-1.5">
-                      <Link href={`/listing/${b.listing_id}`} className="text-[11px] font-black text-violet-600 hover:text-violet-700 transition whitespace-nowrap">View</Link>
+                    <div className="flex items-center gap-2">
+                      <Link href={`/listing/${b.listing_id}`} className="px-4 py-2 rounded-lg text-xs font-bold text-violet-700 bg-violet-50 hover:bg-violet-100 border border-violet-100 transition whitespace-nowrap">View Listing</Link>
                       {pending && (
-                        <button type="button" onClick={() => cancelBooking(b.booking_id)} disabled={busyId === b.booking_id} className="text-[11px] font-black text-slate-400 hover:text-rose-600 transition disabled:opacity-60 whitespace-nowrap">{busyId === b.booking_id ? '…' : 'Cancel'}</button>
+                        <button 
+                          type="button" 
+                          onClick={() => cancelBooking(b.booking_id)} 
+                          disabled={busyId === b.booking_id} 
+                          className="px-4 py-2 rounded-lg text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-100 transition disabled:opacity-60 whitespace-nowrap"
+                        >
+                          {busyId === b.booking_id ? 'Canceling...' : 'Cancel Request'}
+                        </button>
                       )}
                     </div>
                   </div>

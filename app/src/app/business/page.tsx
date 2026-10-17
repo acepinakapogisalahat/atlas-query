@@ -39,23 +39,22 @@ type ReviewRow = {
   user_name?: string;
 };
 
-/* ───────────────  Neumorphic + Glass design tokens  ─────────────── */
 const CANVAS = 'min-h-screen bg-[#e8ecf8] relative overflow-x-hidden';
 const NEU = 'bg-[#edf0fa] shadow-[10px_10px_24px_rgba(163,170,205,0.42),-10px_-10px_24px_rgba(255,255,255,0.95)]';
 const NEU_SM = 'bg-[#edf0fa] shadow-[6px_6px_14px_rgba(163,170,205,0.38),-6px_-6px_14px_rgba(255,255,255,0.9)]';
 const NEU_HOVER = 'transition-all duration-300 hover:-translate-y-1 hover:shadow-[14px_14px_32px_rgba(163,170,205,0.5),-14px_-14px_32px_rgba(255,255,255,1)]';
 const INSET = 'bg-[#e4e8f4] shadow-[inset_5px_5px_11px_rgba(163,170,205,0.38),inset_-5px_-5px_11px_rgba(255,255,255,0.85)]';
-const GLASS = 'bg-white/55 backdrop-blur-xl border border-white/70 shadow-[0_10px_34px_rgba(110,120,190,0.2)]';
-const GLASS_SM = 'bg-white/45 backdrop-blur-md border border-white/60 shadow-[0_4px_16px_rgba(110,120,190,0.18),inset_0_1px_0_rgba(255,255,255,0.65)]';
+const GLASS = 'bg-white/60 backdrop-blur-xl border border-white/70 shadow-[0_10px_34px_rgba(110,120,190,0.15)]';
+const GLASS_SM = 'bg-white/50 backdrop-blur-md border border-white/60 shadow-[0_4px_16px_rgba(110,120,190,0.12)]';
 const SHEEN = 'before:pointer-events-none before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/35 before:via-white/5 before:to-transparent';
 const GRAD = 'from-indigo-500 via-violet-500 to-fuchsia-500';
-const BTN_VIOLET = `relative overflow-hidden bg-gradient-to-r ${GRAD} text-white shadow-[0_12px_30px_-8px_rgba(124,58,237,0.7),inset_0_1px_0_rgba(255,255,255,0.5)] hover:brightness-110 active:scale-[0.97] transition ${SHEEN}`;
-const BTN_AMBER = `relative overflow-hidden bg-gradient-to-r from-amber-400 to-orange-500 text-white shadow-[0_12px_28px_-8px_rgba(245,158,11,0.7),inset_0_1px_0_rgba(255,255,255,0.5)] hover:brightness-110 active:scale-[0.97] transition ${SHEEN}`;
-const BTN_ROSE = `relative overflow-hidden bg-gradient-to-r from-rose-500 to-red-500 text-white shadow-[0_12px_28px_-8px_rgba(244,63,94,0.7),inset_0_1px_0_rgba(255,255,255,0.5)] hover:brightness-110 active:scale-[0.97] transition ${SHEEN}`;
-const BTN_EMERALD = `relative overflow-hidden bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-[0_12px_28px_-8px_rgba(16,185,129,0.7),inset_0_1px_0_rgba(255,255,255,0.5)] hover:brightness-110 active:scale-[0.97] transition ${SHEEN}`;
-const CHIP_IDLE = `${GLASS_SM} text-slate-600 hover:text-violet-700 hover:bg-white/65 active:scale-[0.97] transition`;
+const BTN_VIOLET = `relative overflow-hidden bg-gradient-to-r ${GRAD} text-white shadow-[0_12px_30px_-8px_rgba(124,58,237,0.6),inset_0_1px_0_rgba(255,255,255,0.5)] hover:brightness-110 active:scale-[0.97] transition-all duration-200 ${SHEEN}`;
+const BTN_AMBER = `relative overflow-hidden bg-gradient-to-r from-amber-400 to-orange-500 text-white shadow-[0_12px_28px_-8px_rgba(245,158,11,0.6),inset_0_1px_0_rgba(255,255,255,0.5)] hover:brightness-110 active:scale-[0.97] transition-all duration-200 ${SHEEN}`;
+const BTN_ROSE = `relative overflow-hidden bg-gradient-to-r from-rose-500 to-red-500 text-white shadow-[0_12px_28px_-8px_rgba(244,63,94,0.6),inset_0_1px_0_rgba(255,255,255,0.5)] hover:brightness-110 active:scale-[0.97] transition-all duration-200 ${SHEEN}`;
+const BTN_EMERALD = `relative overflow-hidden bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-[0_12px_28px_-8px_rgba(16,185,129,0.6),inset_0_1px_0_rgba(255,255,255,0.5)] hover:brightness-110 active:scale-[0.97] transition-all duration-200 ${SHEEN}`;
+const CHIP_IDLE = `${GLASS_SM} text-slate-600 hover:text-violet-700 hover:bg-white/70 active:scale-[0.97] transition-all duration-200`;
 const GRAD_TEXT = 'bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 bg-clip-text text-transparent';
-const GLOSS = 'shadow-[inset_0_1px_2px_rgba(255,255,255,0.7),inset_0_-1px_2px_rgba(70,80,150,0.25)]';
+const GLOSS = 'shadow-[inset_0_1px_2px_rgba(255,255,255,0.7),inset_0_-1px_2px_rgba(70,80,150,0.2)]';
 
 function Star({ className, filled }: { className?: string; filled?: boolean }) {
   return (
@@ -144,24 +143,9 @@ function FlagIcon({ className }: { className?: string }) {
   );
 }
 
-/* Gradient glass icon well with top sheen */
-function GlassWell({ gradient, className }: { gradient: string; className?: string }) {
-  return (
-    <div
-      className={`relative overflow-hidden ${className ?? 'w-12 h-12 rounded-2xl'} bg-gradient-to-br ${gradient} text-white flex items-center justify-center shrink-0 shadow-[0_10px_24px_-8px_rgba(80,90,180,0.65),inset_0_1px_0_rgba(255,255,255,0.55)]`}
-    >
-      <span className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/35 via-transparent to-transparent" />
-      <span className="relative">{typeof className === 'undefined' ? null : null}</span>
-    </div>
-  );
-}
-
-/* Glass well with children (icon) centered above the sheen */
 function GlassWellIcon({ gradient, children, size = 'md' }: { gradient: string; children: React.ReactNode; size?: 'md' | 'lg' }) {
   return (
-    <div
-      className={`relative overflow-hidden ${size === 'lg' ? 'w-14 h-14 rounded-2xl' : 'w-12 h-12 rounded-2xl'} bg-gradient-to-br ${gradient} text-white flex items-center justify-center shrink-0 shadow-[0_10px_24px_-8px_rgba(80,90,180,0.65),inset_0_1px_0_rgba(255,255,255,0.55)]`}
-    >
+    <div className={`relative overflow-hidden ${size === 'lg' ? 'w-14 h-14 rounded-2xl' : 'w-12 h-12 rounded-2xl'} bg-gradient-to-br ${gradient} text-white flex items-center justify-center shrink-0 shadow-[0_10px_24px_-8px_rgba(80,90,180,0.5),inset_0_1px_0_rgba(255,255,255,0.55)]`}>
       <span className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/35 via-transparent to-transparent" />
       <span className="relative flex items-center justify-center">{children}</span>
     </div>
@@ -169,7 +153,7 @@ function GlassWellIcon({ gradient, children, size = 'md' }: { gradient: string; 
 }
 
 function AccentBar() {
-  return <div className={`mt-2.5 h-1.5 w-20 rounded-full bg-gradient-to-r ${GRAD} shadow-[0_0_14px_rgba(139,92,246,0.65)]`} />;
+  return <div className={`mt-2.5 h-1.5 w-16 rounded-full bg-gradient-to-r ${GRAD} shadow-[0_0_14px_rgba(139,92,246,0.5)]`} />;
 }
 
 function fmtDate(d: string | null) {
@@ -185,7 +169,7 @@ function statusChip(status: string | null) {
     : 'bg-amber-50/80 text-amber-600 border border-amber-200/80 backdrop-blur-md';
   const label = s === 'confirmed' ? 'Confirmed' : s === 'rejected' ? 'Rejected' : s === 'cancelled' ? 'Cancelled' : 'Pending';
   return (
-    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold capitalize shadow-sm ${cls}`}>
+    <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold capitalize shadow-sm ${cls}`}>
       <span className="w-1.5 h-1.5 rounded-full bg-current" />
       {label}
     </span>
@@ -213,14 +197,10 @@ function ReviewCard({
 }) {
   const isCritical = review.rating <= 2;
   return (
-    <div
-      className={`${GLASS} rounded-3xl p-6 ${NEU_HOVER} animate-fade-in-up ${
-        isCritical ? '!bg-rose-50/60 !border-rose-200/80' : ''
-      }`}
-    >
+    <div className={`${GLASS} rounded-3xl p-6 ${NEU_HOVER} ${isCritical ? '!bg-rose-50/60 !border-rose-200/80' : ''}`}>
       <div className="flex items-start justify-between gap-3 mb-4">
         <div className="flex items-center gap-3 min-w-0">
-          <GlassWellIcon gradient={avatarGradient(review.rating)} className="">
+          <GlassWellIcon gradient={avatarGradient(review.rating)}>
             <span className="w-11 h-11 rounded-2xl flex items-center justify-center font-black text-base">
               {(review.user_name ?? 'T').charAt(0).toUpperCase()}
             </span>
@@ -253,24 +233,12 @@ function ReviewCard({
       <p className="text-sm text-slate-500 leading-relaxed">{review.review_text || 'No written review — rating only.'}</p>
       <div className="flex items-center gap-2 mt-5 pt-4 border-t border-white/60">
         {isCritical ? (
-          <button
-            type="button"
-            onClick={onFlag}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold transition-all duration-200 btn-press ${
-              flagged ? BTN_ROSE : 'bg-rose-50/80 text-rose-500 border border-rose-200/80 backdrop-blur-md hover:bg-rose-100/80'
-            }`}
-          >
+          <button type="button" onClick={onFlag} className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 ${flagged ? BTN_ROSE : 'bg-rose-50/80 text-rose-500 border border-rose-200/80 backdrop-blur-md hover:bg-rose-100/80'}`}>
             <FlagIcon className="w-3.5 h-3.5" />
-            {flagged ? 'Flagged for moderation' : 'Flag for moderation'}
+            {flagged ? 'Flagged' : 'Flag for moderation'}
           </button>
         ) : (
-          <button
-            type="button"
-            onClick={onThank}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold transition-all duration-200 btn-press ${
-              thanked ? BTN_EMERALD : 'bg-emerald-50/80 text-emerald-600 border border-emerald-200/80 backdrop-blur-md hover:bg-emerald-100/80'
-            }`}
-          >
+          <button type="button" onClick={onThank} className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 ${thanked ? BTN_EMERALD : 'bg-emerald-50/80 text-emerald-600 border border-emerald-200/80 backdrop-blur-md hover:bg-emerald-100/80'}`}>
             <Check className="w-3.5 h-3.5" />
             {thanked ? 'Thanked' : 'Thank this guest'}
           </button>
@@ -291,17 +259,12 @@ export default function BusinessPage() {
   const [application, setApplication] = useState<any>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
-  // Tab state
   const [activeTab, setActiveTab] = useState<'overview' | 'reviews' | 'bookings'>('overview');
-
-  // Reviews: per-listing workspace
   const [selectedListingId, setSelectedListingId] = useState<string | null>(null);
   const [reviewStarFilter, setReviewStarFilter] = useState<number | null>(null);
   const [reviewSort, setReviewSort] = useState<'newest' | 'oldest' | 'highest' | 'lowest'>('newest');
   const [thankedReviews, setThankedReviews] = useState<Set<string>>(new Set());
   const [flaggedReviews, setFlaggedReviews] = useState<Set<string>>(new Set());
-
-  // Bookings: master/detail
   const [bookingStatusFilter, setBookingStatusFilter] = useState<string>('all');
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
 
@@ -312,21 +275,17 @@ export default function BusinessPage() {
   }, [role.loading, role.userId, role.isAdmin]);
 
   async function load(uid: string, admin: boolean) {
-    let lsQuery = supabase
-      .from('listings')
-      .select('listing_id, name, listing_type, image_url, average_rating');
+    let lsQuery = supabase.from('listings').select('listing_id, name, listing_type, image_url, average_rating');
     if (!admin) lsQuery = lsQuery.eq('uploaded_by', uid);
     const { data: ls } = await lsQuery;
     const own = (ls ?? []) as OwnListing[];
     setListings(own);
     const ids = own.map((l) => l.listing_id);
 
-    // Default the review workspace to the first listing (kept if still valid)
     setSelectedListingId((cur) => (cur && own.some((l) => l.listing_id === cur) ? cur : own[0]?.listing_id ?? null));
 
     if (ids.length) {
-      const { data: bk } = await supabase
-        .from('bookings').select('*').in('listing_id', ids).order('booking_id', { ascending: false });
+      const { data: bk } = await supabase.from('bookings').select('*').in('listing_id', ids).order('booking_id', { ascending: false });
       const rows = (bk ?? []) as BookingRow[];
       const uids = [...new Set(rows.map((b) => b.user_id))];
       if (uids.length) {
@@ -343,8 +302,7 @@ export default function BusinessPage() {
       });
       setAllBookings(rows);
 
-      const { data: rv } = await supabase
-        .from('reviews').select('*').in('listing_id', ids).order('submission_date', { ascending: false });
+      const { data: rv } = await supabase.from('reviews').select('*').in('listing_id', ids).order('submission_date', { ascending: false });
       const revs = (rv ?? []) as ReviewRow[];
       const ruids = [...new Set(revs.map((r) => r.user_id))];
       if (ruids.length) {
@@ -356,10 +314,8 @@ export default function BusinessPage() {
       setAllReviews(revs);
     }
 
-    const { data: appRows } = await supabase
-      .from('business_applications').select('*').eq('user_id', uid).limit(1);
+    const { data: appRows } = await supabase.from('business_applications').select('*').eq('user_id', uid).limit(1);
     setApplication((appRows ?? [])[0] ?? null);
-
     setLoading(false);
   }
 
@@ -390,9 +346,7 @@ export default function BusinessPage() {
       <main className={CANVAS}>
         <div className="flex items-center justify-center min-h-screen p-8">
           <div className={`${NEU} rounded-3xl p-10 max-w-md text-center`}>
-            <GlassWellIcon gradient={GRAD} size="lg">
-              <Store className="w-7 h-7" />
-            </GlassWellIcon>
+            <GlassWellIcon gradient={GRAD} size="lg"><Store className="w-7 h-7" /></GlassWellIcon>
             <h1 className="text-2xl font-black text-slate-800 mt-5 mb-2">Business hub</h1>
             <p className="text-slate-500 text-sm">
               <Link href="/login" className="text-violet-600 font-semibold underline hover:text-violet-700">Sign in</Link> to manage your listings, bookings, and reviews.
@@ -404,7 +358,6 @@ export default function BusinessPage() {
   }
 
   const isManager = role.isOwner || role.isAdmin;
-
   if (!isManager) {
     const appStatus = application?.status ?? null;
     return (
@@ -414,25 +367,17 @@ export default function BusinessPage() {
             <div className={`w-16 h-16 mx-auto rounded-3xl ${INSET} text-slate-400 flex items-center justify-center mb-5`}>
               <Store className="w-8 h-8" />
             </div>
-            <h1 className="text-2xl font-black text-slate-800">
-              {appStatus === 'pending' ? 'Application under review' : 'Publisher access required'}
-            </h1>
+            <h1 className="text-2xl font-black text-slate-800">{appStatus === 'pending' ? 'Application under review' : 'Publisher access required'}</h1>
             <p className="mt-3 text-sm text-slate-500 leading-relaxed">
-              {appStatus === 'pending'
-                ? 'Your business owner application is being reviewed. You will get full business tools once approved.'
-                : appStatus === 'rejected'
-                  ? 'Your previous application was not approved. You may submit a new application with updated details.'
-                  : 'The business hub is for approved business owners. Apply to list your place on TravelMate.'}
+              {appStatus === 'pending' ? 'Your business owner application is being reviewed.' : appStatus === 'rejected' ? 'Your previous application was not approved. You may submit a new one.' : 'The business hub is for approved business owners.'}
             </p>
             <div className="mt-7 flex justify-center gap-3">
               {appStatus !== 'pending' && (
-                <Link href="/apply" className={`${BTN_VIOLET} px-6 py-3 rounded-full text-sm font-bold btn-press`}>
+                <Link href="/apply" className={`${BTN_VIOLET} px-6 py-3 rounded-full text-sm font-bold`}>
                   <span className="relative">{appStatus === 'rejected' ? 'Reapply now' : 'Apply now'}</span>
                 </Link>
               )}
-              <Link href="/" className={`${CHIP_IDLE} px-6 py-3 rounded-full text-sm font-bold btn-press`}>
-                Back to Discover
-              </Link>
+              <Link href="/" className={`${CHIP_IDLE} px-6 py-3 rounded-full text-sm font-bold`}>Back to Discover</Link>
             </div>
           </div>
         </div>
@@ -440,16 +385,36 @@ export default function BusinessPage() {
     );
   }
 
-  // ---------- Derived data ----------
   const pending = allBookings.filter((b) => (b.status ?? 'pending') === 'pending');
   const confirmed = allBookings.filter((b) => b.status === 'confirmed');
-  const bookingsByListing: Record<string, number> = {};
-  allBookings.forEach((b) => { bookingsByListing[b.listing_id] = (bookingsByListing[b.listing_id] ?? 0) + 1; });
+  
+  const bookingsPerListing: Record<string, number> = {};
+  allBookings.forEach((b) => { 
+    if (b.status === 'confirmed' || b.status === 'pending') {
+      bookingsPerListing[b.listing_id] = (bookingsPerListing[b.listing_id] ?? 0) + 1; 
+    }
+  });
+
+  const listingsByCategory: Record<string, OwnListing[]> = {};
+  listings.forEach((l) => {
+    const cat = l.listing_type || 'Other';
+    if (!listingsByCategory[cat]) listingsByCategory[cat] = [];
+    listingsByCategory[cat].push(l);
+  });
+
+  const topListingPerCategory: Record<string, OwnListing> = {};
+  Object.entries(listingsByCategory).forEach(([cat, catListings]) => {
+    const top = catListings.reduce((prev, current) => 
+      (bookingsPerListing[prev.listing_id] || 0) > (bookingsPerListing[current.listing_id] || 0) ? prev : current
+    );
+    topListingPerCategory[cat] = top;
+  });
+
   const reviewCounts: Record<string, number> = {};
   allReviews.forEach((r) => { reviewCounts[r.listing_id] = (reviewCounts[r.listing_id] ?? 0) + 1; });
+  
   const rated = listings.map((l) => l.average_rating).filter((v): v is number => v != null);
   const avgAll = rated.length ? rated.reduce((a, b) => a + b, 0) / rated.length : null;
-
   const criticalReviews = allReviews.filter((r) => r.rating <= 2).length;
   const pendingBookingsCount = pending.length;
   const needsAttention = criticalReviews > 0 || pendingBookingsCount > 0;
@@ -459,11 +424,13 @@ export default function BusinessPage() {
   const selAvg = selReviews.length ? selReviews.reduce((s, r) => s + Number(r.rating), 0) / selReviews.length : null;
   const selCritical = selReviews.filter((r) => r.rating <= 2).length;
   const selLatest = selReviews.length ? selReviews.map((r) => r.submission_date ?? '').sort().reverse()[0] : null;
+  
   const selDistribution = [5, 4, 3, 2, 1].map((star) => ({
     star,
     count: selReviews.filter((r) => r.rating === star).length,
     pct: selReviews.length ? (selReviews.filter((r) => r.rating === star).length / selReviews.length) * 100 : 0,
   }));
+  
   const filteredReviews = selReviews
     .filter((r) => reviewStarFilter === null || r.rating === reviewStarFilter)
     .sort((a, b) => {
@@ -473,7 +440,7 @@ export default function BusinessPage() {
       return a.rating - b.rating;
     });
 
-  const filteredBookings = allBookings.filter((b) => bookingStatusFilter === 'all' || (b.status ?? 'pending') === b.status && bookingStatusFilter === (b.status ?? 'pending') || bookingStatusFilter === 'all' || (b.status ?? 'pending') === bookingStatusFilter);
+  const filteredBookings = allBookings.filter((b) => bookingStatusFilter === 'all' || (b.status ?? 'pending') === bookingStatusFilter);
   const selectedBooking = allBookings.find((b) => b.booking_id === selectedBookingId) ?? null;
 
   const avgStayLength = confirmed.length
@@ -483,9 +450,7 @@ export default function BusinessPage() {
         return sum + days;
       }, 0) / confirmed.length
     : 0;
-  const responseRate = allBookings.length
-    ? Math.round(((allBookings.length - pending.length) / allBookings.length) * 100)
-    : 100;
+  const responseRate = allBookings.length ? Math.round(((allBookings.length - pending.length) / allBookings.length) * 100) : 100;
 
   function openCriticalReviews() {
     const byCrit = [...listings].sort(
@@ -501,45 +466,30 @@ export default function BusinessPage() {
 
   return (
     <main className={CANVAS}>
-      {/* Ambient color blobs */}
-      <div className="pointer-events-none fixed -top-32 -left-32 w-[34rem] h-[34rem] rounded-full bg-violet-300/30 blur-3xl" />
-      <div className="pointer-events-none fixed top-1/3 -right-40 w-[30rem] h-[30rem] rounded-full bg-sky-300/25 blur-3xl" />
-      <div className="pointer-events-none fixed -bottom-40 left-1/3 w-[32rem] h-[32rem] rounded-full bg-rose-300/20 blur-3xl" />
+      <div className="pointer-events-none fixed -top-32 -left-32 w-[34rem] h-[34rem] rounded-full bg-violet-300/25 blur-3xl" />
+      <div className="pointer-events-none fixed top-1/3 -right-40 w-[30rem] h-[30rem] rounded-full bg-sky-300/20 blur-3xl" />
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 pb-20">
-        {/* ── Header ── */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-5 mb-9 animate-fade-in-up">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-5 mb-8">
           <div>
             <p className={`text-[11px] font-black uppercase tracking-[0.25em] ${GRAD_TEXT} mb-2`}>Publisher console</p>
-            <h1 className="text-4xl font-black tracking-tight text-slate-800">Business hub</h1>
+            <h1 className="text-3xl md:text-4xl font-black tracking-tight text-slate-800">Business hub</h1>
             <AccentBar />
-            <p className="mt-3 text-sm text-slate-500">
-              {role.isAdmin
-                ? 'Platform-wide bookings, reviews, and listing performance'
-                : 'Bookings, reviews, and performance across your listings'}
+            <p className="mt-3 text-sm text-slate-500 max-w-xl">
+              {role.isAdmin ? 'Platform-wide bookings, reviews, and listing performance.' : 'Manage bookings, reviews, and performance across all your properties.'}
             </p>
           </div>
           <div className="flex items-center gap-3">
-            {role.isAdmin ? (
-              <span className={`${GLASS_SM} px-4 py-2 rounded-full text-xs font-bold text-slate-600`}>
-                Administrator · platform-wide view
-              </span>
-            ) : (
-              <span className={`${GLASS_SM} px-4 py-2 rounded-full text-xs font-bold text-violet-600`}>
-                Approved publisher{role.ownerId ? ` · ${role.ownerId}` : ''}
-              </span>
-            )}
-            <Link
-              href={role.isAdmin ? '/admin' : '/owner'}
-              className={`${BTN_VIOLET} px-6 py-2.5 rounded-full text-sm font-bold btn-press`}
-            >
+            <span className={`${GLASS_SM} px-4 py-2 rounded-full text-xs font-bold text-slate-600`}>
+              {role.isAdmin ? 'Administrator' : 'Approved publisher'}
+            </span>
+            <Link href={role.isAdmin ? '/admin' : '/owner'} className={`${BTN_VIOLET} px-6 py-3 rounded-full text-sm font-bold`}>
               <span className="relative">{role.isAdmin ? 'Admin manager' : 'Manage listings'}</span>
             </Link>
           </div>
         </div>
 
-        {/* ── Glass segmented tabs (neu inset track) ── */}
-        <div className={`flex items-center gap-1.5 p-1.5 rounded-2xl ${INSET} mb-9 w-fit animate-fade-in-up`} style={{ animationDelay: '60ms' }}>
+        <div className={`flex items-center gap-1.5 p-1.5 rounded-2xl ${INSET} mb-8 w-fit`}>
           {(['overview', 'reviews', 'bookings'] as const).map((tab) => {
             const badge = tab === 'reviews' ? criticalReviews : tab === 'bookings' ? pendingBookingsCount : 0;
             return (
@@ -547,18 +497,16 @@ export default function BusinessPage() {
                 key={tab}
                 type="button"
                 onClick={() => setActiveTab(tab)}
-                className={`flex items-center gap-2 px-7 py-2.5 rounded-xl text-sm font-bold capitalize transition-all duration-300 btn-press ${
+                className={`flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold capitalize transition-all duration-200 ${
                   activeTab === tab
-                    ? `${BTN_VIOLET} shadow-[0_10px_26px_-8px_rgba(124,58,237,0.75)]`
-                    : 'text-slate-500 hover:text-violet-700'
+                    ? `${BTN_VIOLET} shadow-[0_10px_26px_-8px_rgba(124,58,237,0.6)]`
+                    : 'text-slate-500 hover:text-violet-700 hover:bg-white/50'
                 }`}
               >
                 <span className="relative flex items-center gap-2">
                   {tab}
                   {badge > 0 && (
-                    <span className={`min-w-[1.35rem] h-5 px-1.5 rounded-full text-[10px] font-black flex items-center justify-center ${
-                      activeTab === tab ? 'bg-white/25 text-white' : 'bg-rose-100 text-rose-600 shadow-sm'
-                    }`}>
+                    <span className={`min-w-[1.35rem] h-5 px-1.5 rounded-full text-[10px] font-black flex items-center justify-center ${activeTab === tab ? 'bg-white/25 text-white' : 'bg-rose-100 text-rose-600'}`}>
                       {badge}
                     </span>
                   )}
@@ -568,46 +516,27 @@ export default function BusinessPage() {
           })}
         </div>
 
-        {/* ── Alert banner (tinted glass) ── */}
         {needsAttention && activeTab === 'overview' && (
-          <div className="mb-9 p-5 rounded-3xl backdrop-blur-xl border border-white/70 shadow-[0_10px_34px_rgba(110,120,190,0.22)] bg-gradient-to-r from-amber-100/80 via-orange-100/70 to-rose-100/80 animate-fade-in">
+          <div className="mb-8 p-5 rounded-3xl backdrop-blur-xl border border-white/70 shadow-[0_10px_34px_rgba(110,120,190,0.2)] bg-gradient-to-r from-amber-50/90 via-orange-50/80 to-rose-50/80">
             <div className="flex flex-col md:flex-row md:items-center gap-4">
-              <GlassWellIcon gradient="from-amber-400 to-rose-500">
-                <AlertCircle className="w-6 h-6" />
-              </GlassWellIcon>
+              <GlassWellIcon gradient="from-amber-400 to-rose-500"><AlertCircle className="w-6 h-6" /></GlassWellIcon>
               <div className="flex-1">
                 <p className="font-black text-slate-800 text-lg">Action required</p>
                 <p className="text-sm text-slate-600 mt-0.5">
-                  {pendingBookingsCount > 0 && (
-                    <>
-                      <strong className="text-slate-800">{pendingBookingsCount}</strong> pending booking request{pendingBookingsCount > 1 ? 's' : ''}
-                    </>
-                  )}
+                  {pendingBookingsCount > 0 && <><strong className="text-slate-800">{pendingBookingsCount}</strong> pending booking request{pendingBookingsCount > 1 ? 's' : ''}</>}
                   {pendingBookingsCount > 0 && criticalReviews > 0 && ' and '}
-                  {criticalReviews > 0 && (
-                    <>
-                      <strong className="text-slate-800">{criticalReviews}</strong> critical review{criticalReviews > 1 ? 's' : ''} (1–2 stars)
-                    </>
-                  )}{' '}
+                  {criticalReviews > 0 && <><strong className="text-slate-800">{criticalReviews}</strong> critical review{criticalReviews > 1 ? 's' : ''} (1–2 stars)</>}{' '}
                   need{pendingBookingsCount + criticalReviews === 1 ? 's' : ''} your attention.
                 </p>
               </div>
-              <div className="flex gap-2.5">
+              <div className="flex gap-3">
                 {pendingBookingsCount > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => { setActiveTab('bookings'); setBookingStatusFilter('pending'); }}
-                    className={`${BTN_AMBER} px-5 py-2.5 rounded-full text-sm font-bold whitespace-nowrap btn-press`}
-                  >
+                  <button type="button" onClick={() => { setActiveTab('bookings'); setBookingStatusFilter('pending'); }} className={`${BTN_AMBER} px-5 py-3 rounded-full text-sm font-bold whitespace-nowrap`}>
                     <span className="relative">Review bookings</span>
                   </button>
                 )}
                 {criticalReviews > 0 && (
-                  <button
-                    type="button"
-                    onClick={openCriticalReviews}
-                    className={`${BTN_ROSE} px-5 py-2.5 rounded-full text-sm font-bold whitespace-nowrap btn-press`}
-                  >
+                  <button type="button" onClick={openCriticalReviews} className={`${BTN_ROSE} px-5 py-3 rounded-full text-sm font-bold whitespace-nowrap`}>
                     <span className="relative">View critical reviews</span>
                   </button>
                 )}
@@ -616,143 +545,169 @@ export default function BusinessPage() {
           </div>
         )}
 
-        {/* ══════════ OVERVIEW ══════════ */}
         {activeTab === 'overview' && (
-          <div className="animate-fade-in space-y-9">
-            {/* KPI tiles — neumorphic raised */}
+          <div className="space-y-10">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
-              <div className={`${NEU} ${NEU_HOVER} rounded-3xl p-6 animate-fade-in-up`} style={{ animationDelay: '80ms' }}>
+              <div className={`${NEU} ${NEU_HOVER} rounded-3xl p-6`}>
                 <div className="flex items-start justify-between mb-4">
                   <GlassWellIcon gradient="from-indigo-500 to-violet-500"><Store className="w-6 h-6" /></GlassWellIcon>
-                  <span className="px-2.5 py-1 rounded-full bg-emerald-50/80 backdrop-blur-md border border-emerald-200/80 text-emerald-600 text-[10px] font-black flex items-center gap-1">
-                    <TrendUp className="w-3 h-3" /> ACTIVE
-                  </span>
                 </div>
                 <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400 mb-1">Active listings</p>
-                <p className="text-3xl font-black text-slate-800">{listings.length}</p>
+                <p className="text-4xl font-black text-slate-800">{listings.length}</p>
               </div>
-
-              <div className={`${NEU} ${NEU_HOVER} rounded-3xl p-6 animate-fade-in-up`} style={{ animationDelay: '140ms' }}>
+              <div className={`${NEU} ${NEU_HOVER} rounded-3xl p-6`}>
                 <div className="flex items-start justify-between mb-4">
                   <GlassWellIcon gradient="from-amber-400 to-orange-500"><Star className="w-6 h-6" filled /></GlassWellIcon>
-                  {avgAll != null && avgAll >= 4 && (
-                    <span className="px-2.5 py-1 rounded-full bg-emerald-50/80 backdrop-blur-md border border-emerald-200/80 text-emerald-600 text-[10px] font-black flex items-center gap-1">
-                      <TrendUp className="w-3 h-3" /> EXCELLENT
-                    </span>
-                  )}
                 </div>
                 <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400 mb-1">Average rating</p>
-                <p className="text-3xl font-black text-slate-800">{avgAll != null ? avgAll.toFixed(1) : '—'}</p>
+                <p className="text-4xl font-black text-slate-800">{avgAll != null ? avgAll.toFixed(1) : '—'}</p>
               </div>
-
-              <div className={`${NEU} ${NEU_HOVER} rounded-3xl p-6 animate-fade-in-up`} style={{ animationDelay: '200ms' }}>
+              <div className={`${NEU} ${NEU_HOVER} rounded-3xl p-6`}>
                 <div className="flex items-start justify-between mb-4">
                   <GlassWellIcon gradient="from-emerald-400 to-teal-500"><MessageSquare className="w-6 h-6" /></GlassWellIcon>
-                  <span className="px-2.5 py-1 rounded-full bg-violet-50/80 backdrop-blur-md border border-violet-200/80 text-violet-600 text-[10px] font-black">{allReviews.length} TOTAL</span>
                 </div>
-                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400 mb-1">Reviews</p>
-                <p className="text-3xl font-black text-slate-800">{allReviews.length}</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400 mb-1">Total reviews</p>
+                <p className="text-4xl font-black text-slate-800">{allReviews.length}</p>
               </div>
-
-              <div className={`${NEU} ${NEU_HOVER} rounded-3xl p-6 animate-fade-in-up`} style={{ animationDelay: '260ms' }}>
+              <div className={`${NEU} ${NEU_HOVER} rounded-3xl p-6`}>
                 <div className="flex items-start justify-between mb-4">
                   <GlassWellIcon gradient="from-sky-400 to-indigo-500"><Clock className="w-6 h-6" /></GlassWellIcon>
-                  {responseRate >= 90 && (
-                    <span className="px-2.5 py-1 rounded-full bg-emerald-50/80 backdrop-blur-md border border-emerald-200/80 text-emerald-600 text-[10px] font-black flex items-center gap-1">
-                      <Check className="w-3 h-3" /> FAST
-                    </span>
-                  )}
                 </div>
                 <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400 mb-1">Response rate</p>
-                <p className="text-3xl font-black text-slate-800">{responseRate}%</p>
+                <p className="text-4xl font-black text-slate-800">{responseRate}%</p>
               </div>
             </div>
 
-            {/* Analytics row */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className={`${NEU} rounded-3xl p-7 lg:col-span-2 animate-fade-in-up`} style={{ animationDelay: '120ms' }}>
-                <h2 className="text-xl font-black text-slate-800 mb-6">Booking analytics</h2>
-                <div className="grid grid-cols-3 gap-4 mb-6">
-                  <div className={`${INSET} rounded-2xl p-4 text-center`}>
-                    <p className="text-2xl font-black text-indigo-600">{allBookings.length}</p>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">Total bookings</p>
-                  </div>
-                  <div className={`${INSET} rounded-2xl p-4 text-center`}>
-                    <p className="text-2xl font-black text-emerald-600">{confirmed.length}</p>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">Confirmed</p>
-                  </div>
-                  <div className={`${INSET} rounded-2xl p-4 text-center`}>
-                    <p className="text-2xl font-black text-amber-600">{pending.length}</p>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">Pending</p>
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  <div className={`${INSET} rounded-xl px-5 py-3.5 flex items-center justify-between`}>
-                    <span className="text-sm font-semibold text-slate-500">Avg. stay length</span>
-                    <span className="text-sm font-black text-slate-700">{avgStayLength.toFixed(1)} days</span>
-                  </div>
-                  <div className={`${INSET} rounded-xl px-5 py-3.5 flex items-center justify-between`}>
-                    <span className="text-sm font-semibold text-slate-500">Approval rate</span>
-                    <span className="text-sm font-black text-slate-700">
-                      {allBookings.length ? Math.round((confirmed.length / allBookings.length) * 100) : 0}%
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className={`${NEU} rounded-3xl p-7 animate-fade-in-up`} style={{ animationDelay: '180ms' }}>
-                <h2 className="text-xl font-black text-slate-800 mb-6">Rating spread</h2>
-                <div className="space-y-3.5">
-                  {[5, 4, 3, 2, 1].map((star) => {
-                    const count = allReviews.filter((r) => r.rating === star).length;
-                    const pct = allReviews.length ? (count / allReviews.length) * 100 : 0;
+            {Object.keys(topListingPerCategory).length > 0 && (
+              <section>
+                <h2 className="text-xl font-black text-slate-800 mb-5 flex items-center gap-2">
+                  <TrendUp className="w-5 h-5 text-emerald-500" />
+                  Top Performers by Category
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {Object.entries(topListingPerCategory).map(([category, listing]) => {
+                    const count = bookingsPerListing[listing.listing_id] || 0;
                     return (
-                      <div key={star}>
-                        <div className="flex items-center justify-between mb-1.5">
-                          <span className="text-xs font-bold text-slate-500 flex items-center gap-1">
-                            {star} <Star className="w-3.5 h-3.5 text-amber-400" filled />
-                          </span>
-                          <span className="text-xs font-bold text-slate-400">{count}</span>
+                      <div key={listing.listing_id} className={`${GLASS} rounded-3xl p-5 border border-white/60 hover:shadow-xl transition-all duration-300`}>
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white shadow-lg">
+                            <Store className="w-5 h-5" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Top {category}</p>
+                            <p className="font-black text-slate-800 truncate">{listing.name}</p>
+                          </div>
                         </div>
-                        <div className={`${INSET} h-3 rounded-full overflow-hidden`}>
-                          <div
-                            className={`h-full rounded-full transition-all duration-700 ${GLOSS} ${
-                              star >= 4 ? 'bg-gradient-to-r from-emerald-400 to-teal-400' : star === 3 ? 'bg-gradient-to-r from-amber-400 to-orange-400' : 'bg-gradient-to-r from-rose-400 to-red-400'
-                            }`}
-                            style={{ width: `${pct}%` }}
-                          />
+                        <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+                          <div className="flex items-center gap-1.5 text-amber-500">
+                            <Star className="w-4 h-4" filled />
+                            <span className="text-sm font-bold">{listing.average_rating?.toFixed(1) ?? 'New'}</span>
+                          </div>
+                          <div className="text-sm font-black text-emerald-600">{count} bookings</div>
                         </div>
                       </div>
                     );
                   })}
                 </div>
-              </div>
-            </div>
+              </section>
+            )}
 
-            {/* Recent activity — glass panels */}
+            <section>
+              <h2 className="text-xl font-black text-slate-800 mb-5">Your Properties</h2>
+              {listings.length === 0 ? (
+                <div className={`${NEU} rounded-3xl p-12 text-center`}>
+                  <div className={`w-16 h-16 mx-auto rounded-3xl ${INSET} text-indigo-300 flex items-center justify-center mb-4`}>
+                    <Store className="w-8 h-8" />
+                  </div>
+                  <h3 className="text-lg font-black text-slate-800 mb-2">No listings yet</h3>
+                  <p className="text-sm text-slate-500 max-w-md mx-auto mb-6">Publish your first place to start receiving bookings and reviews.</p>
+                  <Link href="/owner" className={`${BTN_VIOLET} inline-block px-7 py-3 rounded-full text-sm font-bold`}>
+                    <span className="relative">Publish a listing</span>
+                  </Link>
+                </div>
+              ) : (
+                <div className="space-y-8">
+                  {Object.entries(listingsByCategory).map(([category, catListings]) => (
+                    <div key={category}>
+                      <h3 className="text-sm font-black uppercase tracking-wider text-slate-500 mb-4 flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-violet-500" />
+                        {category} <span className="text-slate-400 font-normal">({catListings.length})</span>
+                      </h3>
+                      <div className="flex gap-5 overflow-x-auto pb-4 -mx-4 px-4" style={{ scrollSnapType: 'x mandatory' }}>
+                        {catListings.map((l) => (
+                          <div key={l.listing_id} className={`${NEU} ${NEU_HOVER} rounded-3xl overflow-hidden shrink-0 w-80`} style={{ scrollSnapAlign: 'start' }}>
+                            <div className="relative h-48 bg-[#dfe4f2]">
+                              {l.image_url ? (
+                                <img src={l.image_url} alt="" className="w-full h-48 object-cover" />
+                              ) : (
+                                <div className="w-full h-48 bg-gradient-to-br from-indigo-100 via-violet-100 to-fuchsia-100 flex items-center justify-center">
+                                  <span className="text-sm font-black uppercase tracking-widest text-violet-300">{l.listing_type}</span>
+                                </div>
+                              )}
+                              <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
+                              <span className={`${GLASS_SM} absolute top-3 left-3 px-3 py-1 rounded-full text-slate-600 text-[10px] font-black uppercase tracking-wider`}>
+                                {l.listing_type}
+                              </span>
+                            </div>
+                            <div className="p-5">
+                              <h3 className="font-black text-slate-800 mb-3 truncate">{l.name}</h3>
+                              <div className="flex items-center gap-4 text-xs font-bold text-slate-400 mb-4">
+                                <span className="flex items-center gap-1 text-amber-500">
+                                  <Star className="w-4 h-4" filled />
+                                  {l.average_rating != null ? Number(l.average_rating).toFixed(1) : 'New'}
+                                </span>
+                                <span className="text-violet-500">{reviewCounts[l.listing_id] ?? 0} reviews</span>
+                                <span className="text-sky-500">{bookingsPerListing[l.listing_id] ?? 0} bookings</span>
+                              </div>
+                              <div className="flex gap-2 pt-4 border-t border-white/60">
+                                <button
+                                  type="button"
+                                  onClick={() => { setActiveTab('reviews'); setSelectedListingId(l.listing_id); setReviewStarFilter(null); }}
+                                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-violet-50/80 backdrop-blur-md border border-violet-200/70 text-violet-600 text-xs font-bold hover:bg-violet-100/80 transition"
+                                >
+                                  <Star className="w-3.5 h-3.5 text-amber-400" filled />
+                                  Reviews
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => { setActiveTab('bookings'); setSelectedBookingId(null); }}
+                                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-sky-50/80 backdrop-blur-md border border-sky-200/70 text-sky-600 text-xs font-bold hover:bg-sky-100/80 transition"
+                                >
+                                  <Calendar className="w-3.5 h-3.5" />
+                                  Bookings
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className={`${GLASS} rounded-3xl p-7 animate-fade-in-up`} style={{ animationDelay: '140ms' }}>
+              <div className={`${GLASS} rounded-3xl p-6`}>
                 <div className="flex items-center justify-between mb-5">
-                  <h2 className="text-xl font-black text-slate-800">Recent bookings</h2>
-                  <button type="button" onClick={() => setActiveTab('bookings')} className="text-sm font-bold text-violet-600 hover:text-violet-700 transition">
-                    View all →
-                  </button>
+                  <h2 className="text-lg font-black text-slate-800">Recent bookings</h2>
+                  <button type="button" onClick={() => setActiveTab('bookings')} className="text-sm font-bold text-violet-600 hover:text-violet-700 transition">View all →</button>
                 </div>
                 {allBookings.length === 0 ? (
-                  <div className="text-center py-12">
-                    <div className={`w-16 h-16 mx-auto rounded-3xl ${INSET} text-indigo-300 flex items-center justify-center mb-4`}>
-                      <Calendar className="w-8 h-8" />
+                  <div className="text-center py-8">
+                    <div className={`w-14 h-14 mx-auto rounded-2xl ${INSET} text-indigo-300 flex items-center justify-center mb-3`}>
+                      <Calendar className="w-7 h-7" />
                     </div>
                     <p className="text-sm text-slate-400 font-medium">No booking requests yet.</p>
                   </div>
                 ) : (
-                  <div className="space-y-2.5">
+                  <div className="space-y-2">
                     {allBookings.slice(0, 4).map((b) => (
                       <button
                         type="button"
                         key={b.booking_id}
                         onClick={() => { setActiveTab('bookings'); setSelectedBookingId(b.booking_id); }}
-                        className="w-full flex items-center gap-4 p-3 rounded-2xl hover:bg-white/50 transition text-left"
+                        className="w-full flex items-center gap-4 p-3 rounded-2xl hover:bg-white/60 transition text-left"
                       >
                         {b.listing_image ? (
                           <img src={b.listing_image} alt="" className="w-12 h-12 rounded-xl object-cover shrink-0 shadow-md" />
@@ -772,28 +727,26 @@ export default function BusinessPage() {
                 )}
               </div>
 
-              <div className={`${GLASS} rounded-3xl p-7 animate-fade-in-up`} style={{ animationDelay: '200ms' }}>
+              <div className={`${GLASS} rounded-3xl p-6`}>
                 <div className="flex items-center justify-between mb-5">
-                  <h2 className="text-xl font-black text-slate-800">Recent reviews</h2>
-                  <button type="button" onClick={() => setActiveTab('reviews')} className="text-sm font-bold text-violet-600 hover:text-violet-700 transition">
-                    View all →
-                  </button>
+                  <h2 className="text-lg font-black text-slate-800">Recent reviews</h2>
+                  <button type="button" onClick={() => setActiveTab('reviews')} className="text-sm font-bold text-violet-600 hover:text-violet-700 transition">View all →</button>
                 </div>
                 {allReviews.length === 0 ? (
-                  <div className="text-center py-12">
-                    <div className={`w-16 h-16 mx-auto rounded-3xl ${INSET} text-amber-300 flex items-center justify-center mb-4`}>
-                      <Star className="w-8 h-8" />
+                  <div className="text-center py-8">
+                    <div className={`w-14 h-14 mx-auto rounded-2xl ${INSET} text-amber-300 flex items-center justify-center mb-3`}>
+                      <Star className="w-7 h-7" />
                     </div>
                     <p className="text-sm text-slate-400 font-medium">No reviews yet on your listings.</p>
                   </div>
                 ) : (
-                  <div className="space-y-2.5">
+                  <div className="space-y-2">
                     {allReviews.slice(0, 4).map((r) => (
                       <button
                         type="button"
                         key={r.review_id}
                         onClick={() => { setActiveTab('reviews'); setSelectedListingId(r.listing_id); setReviewStarFilter(null); }}
-                        className="w-full flex items-start gap-3 p-3 rounded-2xl hover:bg-white/50 transition text-left"
+                        className="w-full flex items-start gap-3 p-3 rounded-2xl hover:bg-white/60 transition text-left"
                       >
                         <div className="flex gap-0.5 shrink-0 pt-1">
                           {[1, 2, 3, 4, 5].map((n) => (
@@ -812,84 +765,15 @@ export default function BusinessPage() {
                 )}
               </div>
             </div>
-
-            {/* Listings */}
-            <section>
-              <h2 className="text-xl font-black text-slate-800 mb-5">Your listings</h2>
-              {listings.length === 0 ? (
-                <div className={`${NEU} rounded-3xl p-12 text-center`}>
-                  <div className={`w-16 h-16 mx-auto rounded-3xl ${INSET} text-indigo-300 flex items-center justify-center mb-4`}>
-                    <Store className="w-8 h-8" />
-                  </div>
-                  <h3 className="text-lg font-black text-slate-800 mb-2">No listings yet</h3>
-                  <p className="text-sm text-slate-500 max-w-md mx-auto mb-6">
-                    Publish your first place to start receiving bookings and reviews.
-                  </p>
-                  <Link href="/owner" className={`${BTN_VIOLET} inline-block px-7 py-3 rounded-full text-sm font-bold btn-press`}>
-                    <span className="relative">Publish a listing</span>
-                  </Link>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                  {listings.map((l, i) => (
-                    <div key={l.listing_id} className={`${NEU} ${NEU_HOVER} rounded-3xl overflow-hidden animate-fade-in-up`} style={{ animationDelay: `${i * 70}ms` }}>
-                      <div className="relative h-40 bg-[#dfe4f2]">
-                        {l.image_url ? (
-                          <img src={l.image_url} alt="" className="w-full h-40 object-cover" />
-                        ) : (
-                          <div className="w-full h-40 bg-gradient-to-br from-indigo-100 via-violet-100 to-fuchsia-100 flex items-center justify-center">
-                            <span className="text-sm font-black uppercase tracking-widest text-violet-300">{l.listing_type}</span>
-                          </div>
-                        )}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
-                        <span className={`${GLASS_SM} absolute top-3 left-3 px-3 py-1 rounded-full text-slate-600 text-[10px] font-black uppercase tracking-wider`}>
-                          {l.listing_type}
-                        </span>
-                      </div>
-                      <div className="p-5">
-                        <h3 className="font-black text-slate-800 mb-3 truncate">{l.name}</h3>
-                        <div className="flex items-center gap-4 text-xs font-bold text-slate-400 mb-4">
-                          <span className="flex items-center gap-1 text-amber-500">
-                            <Star className="w-4 h-4" filled />
-                            {l.average_rating != null ? Number(l.average_rating).toFixed(1) : 'New'}
-                          </span>
-                          <span className="text-violet-500">{reviewCounts[l.listing_id] ?? 0} reviews</span>
-                          <span className="text-sky-500">{bookingsByListing[l.listing_id] ?? 0} bookings</span>
-                        </div>
-                        <div className="flex gap-2 pt-4 border-t border-white/60">
-                          <button
-                            type="button"
-                            onClick={() => { setActiveTab('reviews'); setSelectedListingId(l.listing_id); setReviewStarFilter(null); }}
-                            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-violet-50/80 backdrop-blur-md border border-violet-200/70 text-violet-600 text-xs font-bold hover:bg-violet-100/80 transition btn-press"
-                          >
-                            <Star className="w-3.5 h-3.5 text-amber-400" filled />
-                            Reviews
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => { setActiveTab('bookings'); setSelectedBookingId(null); }}
-                            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-sky-50/80 backdrop-blur-md border border-sky-200/70 text-sky-600 text-xs font-bold hover:bg-sky-100/80 transition btn-press"
-                          >
-                            <Calendar className="w-3.5 h-3.5" />
-                            Bookings
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </section>
           </div>
         )}
 
-        {/* ══════════ REVIEWS ══════════ */}
         {activeTab === 'reviews' && (
-          <div className="animate-fade-in">
+          <div>
             <div className="mb-7">
               <h2 className="text-2xl font-black text-slate-800">Traveler reviews</h2>
               <AccentBar />
-              <p className="text-sm text-slate-500 mt-3">Pick a listing to read exactly what travelers said about it</p>
+              <p className="text-sm text-slate-500 mt-3">Pick a listing to read exactly what travelers said about it.</p>
             </div>
 
             {listings.length === 0 ? (
@@ -901,7 +785,6 @@ export default function BusinessPage() {
               </div>
             ) : (
               <>
-                {/* Listing picker — equal-height neu cards, fixed footer slot */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-9">
                   {listings.map((l) => {
                     const count = reviewCounts[l.listing_id] ?? 0;
@@ -912,9 +795,9 @@ export default function BusinessPage() {
                         key={l.listing_id}
                         type="button"
                         onClick={() => { setSelectedListingId(l.listing_id); setReviewStarFilter(null); }}
-                        className={`text-left rounded-3xl p-4 flex flex-col transition-all duration-300 btn-press ${
+                        className={`text-left rounded-3xl p-4 flex flex-col transition-all duration-300 ${
                           sel
-                            ? 'bg-white/75 backdrop-blur-xl border-2 border-violet-400 shadow-[0_16px_38px_-14px_rgba(124,58,237,0.55)]'
+                            ? 'bg-white/75 backdrop-blur-xl border-2 border-violet-400 shadow-[0_16px_38px_-14px_rgba(124,58,237,0.4)]'
                             : `${NEU_SM} border-2 border-transparent hover:bg-white/60 hover:backdrop-blur-xl`
                         }`}
                       >
@@ -935,22 +818,19 @@ export default function BusinessPage() {
                             </p>
                           </div>
                           {crit > 0 && (
-                            <span className="shrink-0 min-w-[1.4rem] h-6 px-1.5 rounded-full bg-rose-50/80 backdrop-blur-md border border-rose-200/80 text-rose-500 text-[10px] font-black flex items-center justify-center" title={`${crit} critical review(s)`}>
+                            <span className="shrink-0 min-w-[1.4rem] h-6 px-1.5 rounded-full bg-rose-50/80 backdrop-blur-md border border-rose-200/80 text-rose-500 text-[10px] font-black flex items-center justify-center">
                               {crit}
                             </span>
                           )}
                         </div>
-                        {/* Footer slot — pinned bottom, fixed height, can never overlap */}
                         <div className="mt-auto pt-3 h-8 flex items-center">
                           {sel ? (
                             <span className="text-[10px] font-black uppercase tracking-widest text-violet-600 flex items-center gap-1.5">
-                              <span className="w-1.5 h-1.5 rounded-full bg-violet-500 animate-pulse shadow-[0_0_8px_rgba(139,92,246,0.9)]" />
+                              <span className="w-1.5 h-1.5 rounded-full bg-violet-500 animate-pulse" />
                               Viewing reviews
                             </span>
                           ) : (
-                            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-300">
-                              Tap to view
-                            </span>
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-300">Tap to view</span>
                           )}
                         </div>
                       </button>
@@ -960,19 +840,14 @@ export default function BusinessPage() {
 
                 {selListing ? (
                   <>
-                    {/* Summary — glass panel */}
-                    <div className={`${GLASS} rounded-3xl p-8 mb-7 animate-fade-in-up`}>
+                    <div className={`${GLASS} rounded-3xl p-8 mb-7`}>
                       <div className="grid grid-cols-1 md:grid-cols-[auto_1fr_auto] gap-9 items-center">
                         <div className="text-center md:text-left">
                           <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1 truncate max-w-[13rem]">{selListing.name}</p>
                           <p className={`text-6xl font-black ${GRAD_TEXT}`}>{selAvg != null ? selAvg.toFixed(1) : '—'}</p>
                           <div className="flex gap-1 justify-center md:justify-start mt-3">
                             {[1, 2, 3, 4, 5].map((n) => (
-                              <Star
-                                key={n}
-                                className={`w-5 h-5 ${selAvg != null && n <= Math.round(selAvg) ? 'text-amber-400' : 'text-slate-300'}`}
-                                filled={selAvg != null && n <= Math.round(selAvg)}
-                              />
+                              <Star key={n} className={`w-5 h-5 ${selAvg != null && n <= Math.round(selAvg) ? 'text-amber-400' : 'text-slate-300'}`} filled={selAvg != null && n <= Math.round(selAvg)} />
                             ))}
                           </div>
                           <p className="text-xs text-slate-400 font-semibold mt-2.5">
@@ -987,7 +862,6 @@ export default function BusinessPage() {
                               key={d.star}
                               type="button"
                               onClick={() => setReviewStarFilter(reviewStarFilter === d.star ? null : d.star)}
-                              title={`Filter ${d.star}-star reviews`}
                               className="w-full flex items-center gap-3 group"
                             >
                               <span className={`text-xs font-black w-9 text-right transition ${reviewStarFilter === d.star ? 'text-violet-600' : 'text-slate-500 group-hover:text-slate-700'}`}>
@@ -1011,9 +885,7 @@ export default function BusinessPage() {
                             <p className="text-xl font-black text-indigo-600">{selReviews.length}</p>
                             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-0.5">Total</p>
                           </div>
-                          <div className={`flex-1 md:flex-none rounded-2xl p-4 text-center ${
-                            selCritical > 0 ? 'bg-rose-50/70 backdrop-blur-md border border-rose-200/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]' : `${INSET}`
-                          }`}>
+                          <div className={`flex-1 md:flex-none rounded-2xl p-4 text-center ${selCritical > 0 ? 'bg-rose-50/70 backdrop-blur-md border border-rose-200/80' : `${INSET}`}`}>
                             <p className={`text-xl font-black ${selCritical > 0 ? 'text-rose-500' : 'text-slate-600'}`}>{selCritical}</p>
                             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-0.5">Critical</p>
                           </div>
@@ -1021,16 +893,9 @@ export default function BusinessPage() {
                       </div>
                     </div>
 
-                    {/* Filters + sort */}
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-7">
                       <div className="flex flex-wrap gap-2.5">
-                        <button
-                          type="button"
-                          onClick={() => setReviewStarFilter(null)}
-                          className={`px-5 py-2.5 rounded-full text-sm font-bold transition-all duration-200 btn-press ${
-                            reviewStarFilter === null ? BTN_VIOLET : CHIP_IDLE
-                          }`}
-                        >
+                        <button type="button" onClick={() => setReviewStarFilter(null)} className={`px-5 py-2.5 rounded-full text-sm font-bold transition-all duration-200 ${reviewStarFilter === null ? BTN_VIOLET : CHIP_IDLE}`}>
                           <span className="relative">All ({selReviews.length})</span>
                         </button>
                         {[5, 4, 3, 2, 1].map((star) => {
@@ -1041,7 +906,7 @@ export default function BusinessPage() {
                               key={star}
                               type="button"
                               onClick={() => setReviewStarFilter(reviewStarFilter === star ? null : star)}
-                              className={`px-5 py-2.5 rounded-full text-sm font-bold transition-all duration-200 flex items-center gap-1.5 btn-press ${
+                              className={`px-5 py-2.5 rounded-full text-sm font-bold transition-all duration-200 flex items-center gap-1.5 ${
                                 reviewStarFilter === star
                                   ? isCrit ? BTN_ROSE : BTN_VIOLET
                                   : isCrit
@@ -1063,9 +928,9 @@ export default function BusinessPage() {
                             key={s}
                             type="button"
                             onClick={() => setReviewSort(s)}
-                            className={`px-4 py-2 rounded-lg text-xs font-bold capitalize transition-all duration-200 btn-press ${
+                            className={`px-4 py-2 rounded-lg text-xs font-bold capitalize transition-all duration-200 ${
                               reviewSort === s
-                                ? 'bg-white/80 backdrop-blur-md text-violet-600 shadow-[0_4px_12px_rgba(120,130,200,0.35),inset_0_1px_0_rgba(255,255,255,0.8)]'
+                                ? 'bg-white/80 backdrop-blur-md text-violet-600 shadow-[0_4px_12px_rgba(120,130,200,0.3),inset_0_1px_0_rgba(255,255,255,0.8)]'
                                 : 'text-slate-500 hover:text-violet-600'
                             }`}
                           >
@@ -1075,13 +940,10 @@ export default function BusinessPage() {
                       </div>
                     </div>
 
-                    {/* Review cards */}
                     {filteredReviews.length === 0 ? (
                       <div className={`${NEU} rounded-3xl p-14 text-center`}>
                         <p className="text-slate-400 font-medium">
-                          {selReviews.length === 0
-                            ? `No reviews yet for ${selListing.name}.`
-                            : 'No reviews match this star filter.'}
+                          {selReviews.length === 0 ? `No reviews yet for ${selListing.name}.` : 'No reviews match this star filter.'}
                         </p>
                       </div>
                     ) : (
@@ -1092,22 +954,8 @@ export default function BusinessPage() {
                             review={r}
                             thanked={thankedReviews.has(r.review_id)}
                             flagged={flaggedReviews.has(r.review_id)}
-                            onThank={() =>
-                              setThankedReviews((prev) => {
-                                const next = new Set(prev);
-                                if (next.has(r.review_id)) next.delete(r.review_id);
-                                else next.add(r.review_id);
-                                return next;
-                              })
-                            }
-                            onFlag={() =>
-                              setFlaggedReviews((prev) => {
-                                const next = new Set(prev);
-                                if (next.has(r.review_id)) next.delete(r.review_id);
-                                else next.add(r.review_id);
-                                return next;
-                              })
-                            }
+                            onThank={() => setThankedReviews((prev) => { const next = new Set(prev); next.has(r.review_id) ? next.delete(r.review_id) : next.add(r.review_id); return next; })}
+                            onFlag={() => setFlaggedReviews((prev) => { const next = new Set(prev); next.has(r.review_id) ? next.delete(r.review_id) : next.add(r.review_id); return next; })}
                           />
                         ))}
                       </div>
@@ -1123,13 +971,12 @@ export default function BusinessPage() {
           </div>
         )}
 
-        {/* ══════════ BOOKINGS ══════════ */}
         {activeTab === 'bookings' && (
-          <div className="animate-fade-in">
+          <div>
             <div className="mb-7">
               <h2 className="text-2xl font-black text-slate-800">Booking requests</h2>
               <AccentBar />
-              <p className="text-sm text-slate-500 mt-3">Manage traveler reservations and availability</p>
+              <p className="text-sm text-slate-500 mt-3">Manage traveler reservations and availability.</p>
             </div>
 
             <div className="flex flex-wrap gap-2.5 mb-8">
@@ -1140,7 +987,7 @@ export default function BusinessPage() {
                     key={status}
                     type="button"
                     onClick={() => { setBookingStatusFilter(status); setSelectedBookingId(null); }}
-                    className={`px-5 py-2.5 rounded-full text-sm font-bold capitalize transition-all duration-200 btn-press ${
+                    className={`px-5 py-3 rounded-full text-sm font-bold capitalize transition-all duration-200 ${
                       bookingStatusFilter === status ? BTN_VIOLET : CHIP_IDLE
                     }`}
                   >
@@ -1159,8 +1006,7 @@ export default function BusinessPage() {
               </div>
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-6 items-start">
-                {/* Master list */}
-                <div className="space-y-3.5 max-h-[75vh] overflow-y-auto pr-2 scrollbar-hide">
+                <div className="space-y-3 max-h-[75vh] overflow-y-auto pr-2">
                   {filteredBookings.length === 0 ? (
                     <div className={`${NEU} rounded-3xl p-10 text-center`}>
                       <p className="text-slate-400 font-medium">No bookings match this filter.</p>
@@ -1174,11 +1020,11 @@ export default function BusinessPage() {
                           key={b.booking_id}
                           type="button"
                           onClick={() => setSelectedBookingId(b.booking_id)}
-                          className={`w-full text-left p-4 rounded-3xl transition-all duration-300 btn-press ${
+                          className={`w-full text-left p-4 rounded-3xl transition-all duration-300 ${
                             sel
-                              ? 'bg-white/75 backdrop-blur-xl border-2 border-violet-400 shadow-[0_16px_38px_-14px_rgba(124,58,237,0.55)]'
+                              ? 'bg-white/75 backdrop-blur-xl border-2 border-violet-400 shadow-[0_16px_38px_-14px_rgba(124,58,237,0.4)]'
                               : isPending
-                                ? 'bg-amber-50/70 backdrop-blur-md border-2 border-amber-300/70 shadow-[6px_6px_14px_rgba(163,170,205,0.3),-6px_-6px_14px_rgba(255,255,255,0.85)] hover:border-amber-400'
+                                ? 'bg-amber-50/70 backdrop-blur-md border-2 border-amber-300/70 hover:border-amber-400'
                                 : `${NEU_SM} border-2 border-transparent hover:bg-white/60 hover:backdrop-blur-xl`
                           }`}
                         >
@@ -1208,7 +1054,6 @@ export default function BusinessPage() {
                   )}
                 </div>
 
-                {/* Detail panel — glass */}
                 <div className={`${GLASS} rounded-3xl p-8 min-h-[440px]`}>
                   {!selectedBooking ? (
                     <div className="flex items-center justify-center h-full text-center">
@@ -1220,11 +1065,11 @@ export default function BusinessPage() {
                       </div>
                     </div>
                   ) : (
-                    <div className="animate-fade-in">
+                    <div>
                       <div className="flex items-start justify-between mb-7">
                         <div className="flex items-center gap-4">
                           {selectedBooking.listing_image ? (
-                            <img src={selectedBooking.listing_image} alt="" className="w-20 h-20 rounded-3xl object-cover shadow-[0_14px_28px_-10px_rgba(101,108,229,0.5)]" />
+                            <img src={selectedBooking.listing_image} alt="" className="w-20 h-20 rounded-3xl object-cover shadow-[0_14px_28px_-10px_rgba(101,108,229,0.4)]" />
                           ) : (
                             <div className={`w-20 h-20 rounded-3xl ${INSET} flex items-center justify-center text-indigo-300`}>
                               <Store className="w-10 h-10" />
@@ -1269,18 +1114,17 @@ export default function BusinessPage() {
                             type="button"
                             onClick={() => decide(selectedBooking.booking_id, 'confirmed')}
                             disabled={busyId === selectedBooking.booking_id}
-                            className={`${BTN_EMERALD} flex-1 py-3.5 rounded-full font-bold btn-press disabled:opacity-60`}
+                            className={`${BTN_EMERALD} flex-1 py-3.5 rounded-full font-bold disabled:opacity-60`}
                           >
-                            <span className="relative"><Check className="w-5 h-5 inline mr-2" />Approve</span>
+                            <span className="relative flex items-center justify-center gap-2"><Check className="w-5 h-5" />Approve</span>
                           </button>
                           <button
                             type="button"
                             onClick={() => decide(selectedBooking.booking_id, 'rejected')}
                             disabled={busyId === selectedBooking.booking_id}
-                            className="flex-1 py-3.5 rounded-full bg-rose-50/80 backdrop-blur-md text-rose-500 border border-rose-200/80 font-bold hover:bg-rose-100/80 transition btn-press disabled:opacity-60"
+                            className="flex-1 py-3.5 rounded-full bg-rose-50/80 backdrop-blur-md text-rose-500 border border-rose-200/80 font-bold hover:bg-rose-100/80 transition disabled:opacity-60"
                           >
-                            <Close className="w-5 h-5 inline mr-2" />
-                            Decline
+                            <span className="relative flex items-center justify-center gap-2"><Close className="w-5 h-5" />Decline</span>
                           </button>
                         </div>
                       )}

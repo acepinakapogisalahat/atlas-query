@@ -15,8 +15,8 @@ import LandingHero from '@/components/dashboard/LandingHero';
 import BusinessOnboarding from '@/components/business/BusinessOnboarding';
 import {
   NEU, NEU_SM, INSET, GLASS, GLASS_SM, GRAD, PILL_ACTIVE, CANVAS, FLOAT_SHADOW,
-  Star, Chevron, MapIcon, SparkleIcon, CompassIcon, RouteIcon, BoltIcon, GlassWellIcon, Link,
-  getTripStatus, fmtDate,
+  Star, MapIcon, SparkleIcon, CompassIcon, RouteIcon, BoltIcon,
+  getTripStatus,
   type Rec, type ExploreCard, type ForecastDay, type TripData, type ReviewMap,
 } from '@/components/dashboard/kit';
 
@@ -37,7 +37,7 @@ export default function HomePage() {
   const { isSuperadmin, loading: suLoading } = useSuperuser();
   const [routing, setRouting] = useState<boolean | null>(null);
   const [ready, setReady] = useState(false);
-  const [tab, setTab] = useState<Tab | null>(null); // null = landing; ?trip= is promoted post-hydration (SSR-safe)
+  const [tab, setTab] = useState<Tab | null>(null);
   const [fabOpen, setFabOpen] = useState(false);
 
   const [firstName, setFirstName] = useState<string | null>(null);
@@ -59,7 +59,7 @@ export default function HomePage() {
   const [subtypeMap, setSubtypeMap] = useState<Record<string, { label: string; value: string }>>({});
   const [destExtra, setDestExtra] = useState<Record<string, { count: number; top: string[] }>>({});
 
-  // routing gate (verbatim)
+  // routing gate
   useEffect(() => {
     async function route() {
       if (role.loading || suLoading) return;
@@ -112,7 +112,7 @@ export default function HomePage() {
   }
   async function refreshTrips() { if (userId) setTrips(await fetchTrips(userId)); }
 
-  // master load (verbatim data shape)
+  // master load
   useEffect(() => {
     async function load() {
       const { data: session } = await supabase.auth.getSession();
@@ -121,8 +121,6 @@ export default function HomePage() {
       if (authId) {
         const { data: profile } = await supabase.from('app_users').select('user_id, name, current_location').eq('auth_user_id', authId).maybeSingle();
         if (profile) { uid = profile.user_id; setUserId(profile.user_id); setFirstName(String(profile.name ?? '').split(' ')[0] || null); loadForecast(profile.current_location ?? null); }
-        // Best-effort account age. Separate query so a missing created_at column can NEVER
-        // null out the main profile read above (that would silently drop name/trips).
         try { const { data: ageRow } = await supabase.from('app_users').select('created_at').eq('auth_user_id', authId).maybeSingle(); setCreatedAt((ageRow as any)?.created_at ?? null); } catch { setCreatedAt(null); }
       }
       let rq = supabase.from('recommendations').select(REC_SELECT); if (uid) rq = rq.eq('user_id', uid);
@@ -145,7 +143,6 @@ export default function HomePage() {
         supabase.from('schedules').select('schedule_id, open_time, close_time'),
       ]);
       setExplore((exploreRows as unknown as ExploreCard[]) ?? []);
-      if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && !(window as any).__tmGeoLogged) { (window as any).__tmGeoLogged = true; console.log('[TravelMate] destination columns loaded:', Object.keys((exploreRows?.[0] as any)?.destination ?? {}), '\nsample destination:', JSON.stringify((exploreRows?.[0] as any)?.destination ?? null)); }
       setAllDests((dests ?? []) as { destination_name: string; region_country: string }[]);
       const dDesc: Record<string, string> = {}; const dExtra: Record<string, { count: number; top: string[] }> = {};
       (exploreRows ?? []).forEach((r: any) => { dDesc[r.listing_id] = r.description ?? ''; const dn = r.destination?.destination_name; if (dn) { const e = (dExtra[dn] ??= { count: 0, top: [] }); e.count += 1; if (e.top.length < 3) e.top.push(r.name); } });
@@ -168,7 +165,7 @@ export default function HomePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // review progress (verbatim)
+  // review progress
   useEffect(() => {
     async function loadReviewProgress() {
       if (!userId || !trips.length) { setTripReviewMap({}); return; }
@@ -185,52 +182,26 @@ export default function HomePage() {
 
   function goSearch(q?: string) { const params = new URLSearchParams(); const fq = (q ?? '').trim(); if (fq) params.set('q', fq); router.push(`/search?${params.toString()}`); }
 
-  function scrollToTabContent() {
-    if (typeof window === 'undefined') return;
-    requestAnimationFrame(() => {
-      document.getElementById('tab-content')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
-  }
-   function openTab(t: Tab) { setTab(t); setFabOpen(false); } // scroll is handled by the [tab] effect below (post-commit, so the panel is mounted before we measure it)
-  function toggleTab(t: Tab) { if (tab === t) setTab(null); else openTab(t); } // press active tab again -> back to landing
+  function openTab(t: Tab) { setTab(t); setFabOpen(false); }
+  function toggleTab(t: Tab) { if (tab === t) setTab(null); else openTab(t); }
 
-  // Deep link: /?trip=ID opens the Plan tab AFTER hydration (never during render -> no SSR mismatch).
   useEffect(() => {
     if (typeof window === 'undefined') return;
     if (new URLSearchParams(window.location.search).has('trip')) setTab('plan');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Glide to the opened panel AFTER React has committed it to the DOM. The old code scrolled from
-  // inside the click handler via requestAnimationFrame, which ran BEFORE the panel mounted, so it
-  // measured an empty #tab-content and stopped short (planner ended up below the fold). Keying the
-  // scroll to [tab] guarantees the real height exists; #tab-content's scroll-mt-40 then lands the
-  // planner header exactly under the sticky nav + tab bar.
   useEffect(() => {
     if (!tab) return;
     const el = document.getElementById('tab-content');
     if (!el) return;
-    // Match #tab-content's scroll-mt-* so we land exactly under the sticky nav + tab bar.
     const OFFSET = parseFloat(getComputedStyle(el).scrollMarginTop) || 160;
     const topOf = () => el.getBoundingClientRect().top + window.scrollY - OFFSET;
     const glide = requestAnimationFrame(() => window.scrollTo({ top: topOf(), behavior: 'smooth' }));
-    // Settle guard: if a child effect or a late-loading image shifted the page mid-glide,
-    // re-assert the exact flush position once the smooth animation has finished. This is what
-    // makes the hero button land as cleanly as the tab buttons (which never got interrupted
-    // because the board was already in view).
     const settle = window.setTimeout(() => {
       if (Math.abs(window.scrollY - topOf()) > 4) window.scrollTo({ top: topOf(), behavior: 'auto' });
     }, 520);
     return () => { cancelAnimationFrame(glide); clearTimeout(settle); };
   }, [tab]);
-
-  // Deep link: /?trip=ID (cockpit's "Edit in planner") must land IN the planner, not on the
-  // landing. Open the Plan tab on mount; PlanTab then selects that trip and scrolls to itself.
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    if (new URLSearchParams(window.location.search).has('trip')) setTab('plan');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
@@ -239,8 +210,6 @@ export default function HomePage() {
   const activeTotal = activeTrip?.start_date && activeTrip?.end_date ? Math.max(1, Math.round((new Date(activeTrip.end_date + 'T00:00:00').getTime() - new Date(activeTrip.start_date + 'T00:00:00').getTime()) / 86400000) + 1) : null;
   const needsReviewCount = trips.filter((t) => { const i = tripReviewMap[t.trip_id]; const st = getTripStatus(t); return st === 'finished' && (i?.total ?? 0) > 0 && (i?.reviewed ?? 0) < (i?.total ?? 0); }).length;
 
-  // Segmentation: newcomer vs returning vs veteran vs guest. Time only PROMOTES a user out
-  // of the marketing hero; it never traps an active user in it. Tune constants in LandingHero.
   const tier = useMemo<'guest' | 'new' | 'returning' | 'veteran'>(() => {
     if (!userId) return 'guest';
     const ageDays = createdAt ? (Date.now() - new Date(createdAt).getTime()) / 86400000 : null;
@@ -271,10 +240,9 @@ export default function HomePage() {
       <div className="pointer-events-none fixed top-1/3 -right-40 w-[30rem] h-[30rem] rounded-full bg-sky-300/25 blur-3xl z-0" />
       <div className="pointer-events-none fixed -bottom-40 left-1/3 w-[32rem] h-[32rem] rounded-full bg-fuchsia-300/20 blur-3xl z-0" />
 
-      {/* Business-owner / place-approved login popup (returns null until a status transition fires) */}
       <BusinessOnboarding />
 
-      {/* Welcome / landing — content adapts to newcomer vs returning vs veteran vs guest */}
+      {/* 1. HERO BANNER */}
       <LandingHero
         tier={tier}
         greeting={greeting}
@@ -289,14 +257,14 @@ export default function HomePage() {
         searchSlot={<SmartSearch placeholder='Where to? Try "Japan", "Kyoto", or "Palawan"' />}
       />
 
-      {/* Tab switcher */}
-      <section className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className={`${GLASS} rounded-3xl p-1.5 flex gap-1 sticky top-24 z-30`}>
+      {/* 2. TAB SWITCHER */}
+      <section className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 z-20">
+        <div className={`${GLASS} rounded-3xl p-1.5 flex gap-1 sticky top-24 shadow-lg shadow-slate-200/50`}>
           {TABS.map((t) => {
             const active = tab === t.id;
             const badge = t.id === 'plan' ? needsReviewCount : t.id === 'discover' ? explore.length : 0;
             return (
-              <button key={t.id} type="button" onClick={() => toggleTab(t.id)} className={`flex-1 relative flex items-center justify-center gap-2 px-4 py-3 rounded-2xl text-sm font-black tracking-wide whitespace-nowrap transition-all duration-300 active:scale-95 ${active ? PILL_ACTIVE : 'text-slate-500 hover:text-violet-600'}`}>
+              <button key={t.id} type="button" onClick={() => toggleTab(t.id)} className={`flex-1 relative flex items-center justify-center gap-2 px-4 py-3 rounded-2xl text-sm font-bold tracking-wide whitespace-nowrap transition-all duration-300 active:scale-95 ${active ? PILL_ACTIVE : 'text-slate-500 hover:text-violet-600 hover:bg-white/50'}`}>
                 <span className="relative flex items-center gap-2">{t.icon}{t.label}</span>
                 {badge > 0 && <span className={`relative min-w-[1.25rem] h-5 px-1.5 rounded-full text-[10px] font-black flex items-center justify-center ${active ? 'bg-white/25 text-white' : t.id === 'plan' ? 'bg-amber-100 text-amber-600' : 'bg-violet-100 text-violet-600'}`}>{badge > 99 ? '99+' : badge}</span>}
               </button>
@@ -305,8 +273,8 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Tab content */}
-      <section id="tab-content" className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-8 w-full flex-1 scroll-mt-40">
+      {/* 3. TAB CONTENT */}
+      <section id="tab-content" className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-8 w-full flex-1 scroll-mt-40">
         {tab === null ? null : !ready && userId ? (
           <div className="space-y-4 animate-in fade-in duration-500">{[0, 1, 2].map((i) => <div key={i} className={`h-40 rounded-3xl ${INSET} animate-pulse`} />)}</div>
         ) : (
@@ -318,12 +286,41 @@ export default function HomePage() {
         )}
       </section>
 
-      {/* FAB (mobile) */}
+      {/* 4. FEATURES SECTION (Moved here, below tabs) */}
+      <section className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 border-t border-slate-200/60 mt-12">
+        <div className="text-center max-w-3xl mx-auto mb-12">
+          <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-slate-900">
+            Everything you need to <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-fuchsia-600">plan perfectly</span>
+          </h2>
+          <p className="mt-4 text-lg text-slate-600">No spreadsheets. No stress. Just pure travel excitement.</p>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {[
+            { i: <RouteIcon className="h-6 w-6" />, g: 'from-indigo-500 to-violet-500', t: 'Smart Itinerary', d: 'Auto-plan assigns mornings, afternoons, and evenings across your dates, keeping same-area places together.' },
+            { i: <CompassIcon className="h-6 w-6" />, g: 'from-violet-500 to-fuchsia-500', t: 'Discover Places', d: 'Browse top-rated attractions, stays, and eats — scoped to the stops you actually picked.' },
+            { i: <BoltIcon className="h-6 w-6" />, g: 'from-amber-500 to-orange-500', t: 'Travel Tools', d: 'Weather outlook, pacing, and review nudges for the trips you have booked.' }
+          ].map((f) => (
+            <div key={f.t} className="group relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-8 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-violet-500/5">
+              <div className="absolute top-0 right-0 h-40 w-40 rounded-full bg-gradient-to-br from-violet-50 to-fuchsia-50 blur-3xl transition-all duration-500 group-hover:scale-150" />
+              <div className="relative z-10">
+                <div className={`mb-5 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br ${f.g} text-white shadow-lg`}>
+                  {f.i}
+                </div>
+                <h3 className="text-xl font-bold text-slate-900">{f.t}</h3>
+                <p className="mt-3 text-slate-600 leading-relaxed">{f.d}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* 5. MOBILE FAB & FOOTER */}
       <div className="fixed bottom-6 right-6 z-40 md:hidden">
         {fabOpen && (
           <div className="absolute bottom-16 right-0 w-48 space-y-2 animate-slide-up">
             {[{ l: 'Plan', i: <RouteIcon className="w-4 h-4" />, a: () => openTab('plan') }, { l: 'Discover', i: <CompassIcon className="w-4 h-4" />, a: () => openTab('discover') }, { l: 'Search', i: <SparkleIcon className="w-4 h-4" />, a: () => router.push('/search') }].map((m) => (
-              <button key={m.l} type="button" onClick={() => { m.a(); setFabOpen(false); }} className={`w-full ${NEU} rounded-2xl px-4 py-3 flex items-center gap-3 text-sm font-black text-slate-700 ${FLOAT_SHADOW} active:scale-95 transition`}>{m.i}{m.l}</button>
+              <button key={m.l} type="button" onClick={() => { m.a(); setFabOpen(false); }} className={`w-full ${NEU} rounded-2xl px-4 py-3 flex items-center gap-3 text-sm font-bold text-slate-700 ${FLOAT_SHADOW} active:scale-95 transition`}>{m.i}{m.l}</button>
             ))}
           </div>
         )}

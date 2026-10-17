@@ -1,278 +1,462 @@
-// app/src/app/trip/page.tsx — LIVE TRIP COCKPIT (read-only viewing page)
+// app/src/app/my-trips/page.tsx — TRAVELER HQ (mt-B1)
 'use client';
-import { useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { Fragment, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
+import { useRole } from '@/utils/supabase/role';
 import {
-  CANVAS, NEU, NEU_SM, INSET, GLASS, GLASS_SM, GRAD, GRAD_TEXT, GLOSS, FLOAT_SHADOW,
-  BTN_PRIMARY, BTN_GHOST,
-  Star, MapIcon, RouteIcon, SparkleIcon, GlassWellIcon, SummaryTile, EmptyBox, Link,
-  getTripStatus, fmtDate, statusPill,
-  type TripItem, type TripData,
+  NEU_SM, INSET, GLASS, GLASS_SM, GRAD, GRAD_TEXT, GLOSS, PILL_ACTIVE, CANVAS, FLOAT_SHADOW,
+  BTN_PRIMARY, BTN_GHOST, Star, Chevron, PlusIcon, MapIcon, RouteIcon, CalendarIcon as _unused,
+  GlassWellIcon, EmptyBox, Link, getTripStatus, fmtDate, statusPill,
 } from '@/components/dashboard/kit';
 
-// Freshness canary — if this never prints, the server isn't compiling this route.
-if (typeof window !== 'undefined') console.log('[TripPage] build=trip-2');
+if (typeof window !== 'undefined') console.log('[MyTrips] build=mt-B1');
 
-function fmtTime(t: string | null) { if (!t) return ''; const [h, m] = t.split(':'); const hr = parseInt(h, 10); const ampm = hr >= 12 ? 'PM' : 'AM'; const hr12 = hr % 12 === 0 ? 12 : hr % 12; return `${hr12}:${m} ${ampm}`; }
-function slotLabel(it: TripItem) { const t = it.start_time ?? ''; if (t.startsWith('09')) return 'Morning'; if (t.startsWith('13')) return 'Afternoon'; if (t.startsWith('18')) return 'Evening'; return ['Morning', 'Afternoon', 'Evening'][(it.sequence_no ?? 1) - 1] ?? 'Stop'; }
+type TripItemLite = { name: string; listing_id: string | null; planned_date: string | null; isNote: boolean };
+type TripRow = {
+  trip_id: string;
+  trip_name: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  status: string | null;
+  stops: { label: string; days: number }[];
+  items: TripItemLite[];
+  placesCount: number;
+  reviewedCount: number;
+};
+type BookingRow = {
+  booking_id: string;
+  listing_id: string;
+  check_in: string | null;
+  check_out: string | null;
+  guests: number | null;
+  special_requests: string | null;
+  status: string | null;
+  listing_name?: string;
+  listing_type?: string;
+  image_url?: string | null;
+};
 
-export default function TripCockpit() {
+function CalendarIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className ?? 'w-5 h-5'}>
+      <rect x="3" y="5" width="18" height="16" rx="2" />
+      <path d="M8 3v4M16 3v4M3 10h18" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function CheckIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className ?? 'w-4 h-4'}>
+      <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+const STOP_LINE = ['bg-violet-400', 'bg-sky-400', 'bg-amber-400', 'bg-emerald-400', 'bg-pink-400', 'bg-indigo-400', 'bg-teal-400', 'bg-rose-400'];
+const STOP_FILL = ['bg-violet-500', 'bg-sky-500', 'bg-amber-500', 'bg-emerald-500', 'bg-pink-500', 'bg-indigo-500', 'bg-teal-500', 'bg-rose-500'];
+const STOP_BORDER = ['border-violet-500', 'border-sky-500', 'border-amber-500', 'border-emerald-500', 'border-pink-500', 'border-indigo-500', 'border-teal-500', 'border-rose-500'];
+
+function dayRange(start: string | null, end: string | null): string[] {
+  if (!start || !end) return [];
+  const out: string[] = [];
+  const d0 = new Date(start + 'T00:00:00'); const d1 = new Date(end + 'T00:00:00');
+  for (const d = new Date(d0); d <= d1; d.setDate(d.getDate() + 1)) out.push(d.toISOString().slice(0, 10));
+  return out;
+}
+
+function stopIdxForDate(start: string | null, stops: { label: string; days: number }[], date: string): number {
+  if (!start || !stops.length) return 0;
+  const off = Math.floor((new Date(date + 'T00:00:00').getTime() - new Date(start + 'T00:00:00').getTime()) / 86400000);
+  let cur = 0;
+  for (let i = 0; i < stops.length; i++) { 
+    const n = Math.max(1, stops[i].days || 1); 
+    if (off >= cur && off < cur + n) return i; 
+    cur += n; 
+  }
+  return stops.length - 1;
+}
+
+/* Condensed, decorative roadmap */
+function MiniRoadmap({ trip, todayISO }: { trip: TripRow; todayISO: string }) {
+  const days = dayRange(trip.start_date, trip.end_date);
+  if (!days.length) return null;
+  const stops = trip.stops ?? [];
+  const placeDays = new Set(trip.items.filter((i) => !i.isNote && i.planned_date).map((i) => i.planned_date as string));
+  const shown: (string | null)[] = days.length > 16 ? [...days.slice(0, 9), null, ...days.slice(days.length - 6)] : days;
+  return (
+    <div className="flex items-center overflow-hidden py-2" aria-hidden="true" title={`${days.length} day${days.length === 1 ? '' : 's'} · ${placeDays.size} with plans`}>
+      {shown.map((d, i) => {
+        if (d === null) return <span key={`e${i}`} className="shrink-0 px-1 text-[10px] font-black leading-none text-slate-300">···</span>;
+        const si = stopIdxForDate(trip.start_date, stops, d);
+        const filled = placeDays.has(d);
+        const isToday = d === todayISO;
+        const prev = shown[i - 1];
+        return (
+          <Fragment key={d}>
+            {i > 0 && prev !== null && <span className={`h-1 w-2 sm:w-4 shrink-0 rounded-full ${STOP_LINE[si % STOP_LINE.length]}`} />}
+            <span className={`relative w-4 h-4 sm:w-5 sm:h-5 shrink-0 rounded-full border-2 ${STOP_BORDER[si % STOP_BORDER.length]} ${filled ? STOP_FILL[si % STOP_FILL.length] : 'bg-white'} ${isToday ? 'ring-2 ring-emerald-400 ring-offset-1 ring-offset-white' : ''}`} />
+          </Fragment>
+        );
+      })}
+    </div>
+  );
+}
+
+function StatTile({ label, value, tone }: { label: string; value: string; tone?: 'amber' | 'emerald' | 'slate' }) {
+  const num = tone === 'amber' ? 'text-amber-600' : tone === 'emerald' ? 'text-emerald-600' : `${GRAD_TEXT}`;
+  return (
+    <div className={`rounded-2xl ${INSET} px-4 py-4 text-center border border-white/60`}>
+      <p className={`text-2xl font-black tabular-nums leading-none ${num}`}>{value}</p>
+      <p className="mt-2 text-xs font-bold uppercase tracking-wider text-slate-500">{label}</p>
+    </div>
+  );
+}
+
+function bookingChip(status: string | null) {
+  const s = status ?? 'pending';
+  const cls =
+    s === 'confirmed' ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
+    : s === 'rejected' ? 'bg-rose-50 text-rose-700 border-rose-200/80'
+    : s === 'cancelled' ? 'bg-slate-100 text-slate-600 border-slate-200/80'
+    : 'bg-amber-50 text-amber-700 border-amber-200/80';
+  return <span className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider border ${cls}`}>{s}</span>;
+}
+
+export default function MyTripsPage() {
   const supabase = createClient();
-  const searchParams = useSearchParams();
+  const role = useRole();
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
-  const [userId, setUserId] = useState<string | null>(null);
-  const [trips, setTrips] = useState<TripData[]>([]);
-  const [selectedTripId, setSelectedTripId] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
-  const [copyErr, setCopyErr] = useState<string | null>(null);
-  const seededRef = useRef(false);
+  const [trips, setTrips] = useState<TripRow[]>([]);
+  const [bookings, setBookings] = useState<BookingRow[]>([]);
+  const [tab, setTab] = useState<'trips' | 'bookings'>('trips');
+  const [tripFilter, setTripFilter] = useState<'all' | 'upcoming' | 'ongoing' | 'finished'>('all');
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const todayISO = new Date().toISOString().slice(0, 10);
 
-  // ---- read-only load (same shapes as the dashboard) ----
   useEffect(() => {
-    async function fetchTrips(uid: string): Promise<TripData[]> {
-      const { data: t } = await supabase.from('trips').select('*').eq('user_id', uid).order('start_date', { ascending: false });
-      const rows = (t ?? []) as any[]; if (!rows.length) return [];
-      const ids = rows.map((r) => r.trip_id);
-      const { data: items } = await supabase.from('trip_items').select('*').in('trip_id', ids);
-      const listingIds = [...new Set((items ?? []).map((i: any) => i.listing_id).filter((id: any) => id && id !== 'NOTE'))];
-      const lMap: Record<string, any> = {};
+    if (!role.loading && role.userId) load(role.userId);
+    if (!role.loading && !role.userId) setLoading(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [role.loading, role.userId]);
+
+  // Managers (owners/admins) have no traveler trips — send them to the hub
+  useEffect(() => {
+    if (!role.loading && (role.isOwner || role.isAdmin)) router.replace('/business');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [role.loading, role.isOwner, role.isAdmin]);
+
+  async function load(uid: string) {
+    const { data: t } = await supabase.from('trips').select('*').eq('user_id', uid).order('start_date', { ascending: false });
+    const rows = (t ?? []) as any[];
+    const tripIds = rows.map((r) => r.trip_id);
+    const itemsByTrip: Record<string, TripItemLite[]> = {};
+    const allListingIds = new Set<string>();
+
+    if (tripIds.length) {
+      const { data: items } = await supabase.from('trip_items').select('*').in('trip_id', tripIds);
+      const listingIds = [...new Set((items ?? []).map((i: any) => i.listing_id).filter((id: any) => id && id !== 'NOTE'))] as string[];
+      listingIds.forEach((id) => allListingIds.add(id));
+      const nameMap: Record<string, string> = {};
       if (listingIds.length) {
-        const { data: ls } = await supabase.from('listings').select('listing_id, name, listing_type, average_rating, image_url, destination:destination_id(*)').in('listing_id', listingIds);
-        (ls ?? []).forEach((l: any) => { lMap[l.listing_id] = { name: l.name, destination_id: l.destination?.destination_id ?? null, destination_name: l.destination?.destination_name ?? null, region_country: l.destination?.region_country ?? null, destBlob: l.destination ?? null, listing_type: l.listing_type ?? null, average_rating: l.average_rating != null ? Number(l.average_rating) : null, image_url: l.image_url ?? null }; });
+        const { data: ls } = await supabase.from('listings').select('listing_id, name').in('listing_id', listingIds);
+        (ls ?? []).forEach((l: any) => { nameMap[l.listing_id] = l.name; });
       }
-      const map: Record<string, any[]> = {};
       (items ?? []).forEach((i: any) => {
         const isNote = i.listing_id == null || i.listing_id === 'NOTE';
-        (map[i.trip_id] ??= []).push({ key: i.trip_item_id ?? i.item_id ?? i.id ?? `${i.trip_id}|${i.listing_id}`, listing_id: i.listing_id, name: isNote ? (i.notes ?? 'Note') : lMap[i.listing_id]?.name ?? i.listing_id, destination_name: isNote ? null : lMap[i.listing_id]?.destination_name ?? null, region_country: isNote ? null : lMap[i.listing_id]?.region_country ?? null, listing_type: isNote ? 'Note' : lMap[i.listing_id]?.listing_type ?? null, rating: isNote ? null : lMap[i.listing_id]?.average_rating ?? null, image_url: isNote ? null : lMap[i.listing_id]?.image_url ?? null, planned_date: i.planned_date ?? null, start_time: i.start_time ?? null, sequence_no: i.sequence_no ?? null, notes: i.notes ?? null, raw: i });
+        (itemsByTrip[i.trip_id] ??= []).push({
+          name: isNote ? (i.notes ?? 'Note') : nameMap[i.listing_id] ?? i.listing_id,
+          listing_id: isNote ? null : i.listing_id,
+          planned_date: i.planned_date ?? null,
+          isNote,
+        });
       });
-      return rows.map((r) => ({ trip_id: r.trip_id, trip_name: r.trip_name ?? r.name ?? null, start_date: r.start_date ?? null, end_date: r.end_date ?? null, status: r.status ?? null, stops: Array.isArray(r.stops) ? r.stops : [], items: map[r.trip_id] ?? [] }));
     }
-    async function load() {
-      try {
-        const { data: session } = await supabase.auth.getSession();
-        const authId = session.session?.user?.id ?? null;
-        if (authId) {
-          const { data: profile } = await supabase.from('app_users').select('user_id').eq('auth_user_id', authId).maybeSingle();
-          if (profile) { setUserId(profile.user_id); setTrips(await fetchTrips(profile.user_id)); }
-        }
-      } finally { setLoading(false); }
+
+    const reviewedSet = new Set<string>();
+    if (allListingIds.size) {
+      const { data: revs } = await supabase.from('reviews').select('listing_id').eq('user_id', uid).in('listing_id', [...allListingIds]);
+      (revs ?? []).forEach((r: any) => reviewedSet.add(r.listing_id));
     }
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
-  // ---- derived (view-only) ----
-  const liveTrips = trips.filter((t) => getTripStatus(t) !== 'finished');
-  const ongoing = liveTrips.find((t) => getTripStatus(t) === 'ongoing') ?? null;
-  const nextUp = liveTrips.find((t) => getTripStatus(t) === 'upcoming') ?? null;
-  const selectedTrip = trips.find((t) => t.trip_id === selectedTripId) ?? ongoing ?? nextUp ?? null;
+    setTrips(
+      rows.map((r) => {
+        const items = itemsByTrip[r.trip_id] ?? [];
+        const placeIds = [...new Set(items.filter((it) => it.listing_id).map((it) => it.listing_id as string))];
+        return {
+          trip_id: r.trip_id,
+          trip_name: r.trip_name ?? null,
+          start_date: r.start_date ?? null,
+          end_date: r.end_date ?? null,
+          status: r.status ?? null,
+          stops: Array.isArray(r.stops) ? r.stops : [],
+          items,
+          placesCount: placeIds.length,
+          reviewedCount: placeIds.filter((id) => reviewedSet.has(id)).length,
+        };
+      })
+    );
 
-  useEffect(() => {
-    if (seededRef.current || !trips.length) return;
-    const fromUrl = searchParams.get('trip');
-    if (fromUrl && trips.some((t) => t.trip_id === fromUrl)) setSelectedTripId(fromUrl);
-    seededRef.current = true;
-  }, [trips, searchParams]);
-
-  const tripStops = (selectedTrip?.stops ?? []) as { label: string; days: number }[];
-  const tripDays = selectedTrip?.start_date && selectedTrip?.end_date ? Math.max(1, Math.round((new Date(selectedTrip.end_date + 'T00:00:00').getTime() - new Date(selectedTrip.start_date + 'T00:00:00').getTime()) / 86400000) + 1) : null;
-  const capacity = tripStops.length > 0 ? tripStops.reduce((s, x) => s + (x.days || 1), 0) * 3 : tripDays ? tripDays * 3 : 6;
-  const placeCount = selectedTrip ? selectedTrip.items.filter((i) => i.listing_type !== 'Note').length : 0;
-  const plannedPlaceCount = selectedTrip ? selectedTrip.items.filter((i) => i.planned_date && i.listing_type !== 'Note').length : 0;
-  const plannedDates = selectedTrip ? ([...new Set(selectedTrip.items.map((i) => i.planned_date).filter(Boolean))] as string[]).sort() : [];
-  const unscheduled = selectedTrip ? selectedTrip.items.filter((i) => !i.planned_date && i.listing_type !== 'Note') : [];
-  const status = selectedTrip ? getTripStatus(selectedTrip) : null;
-  const todayISO = new Date().toISOString().slice(0, 10);
-  const dayIndex = selectedTrip?.start_date && status === 'ongoing' ? Math.max(1, Math.floor((Date.now() - new Date(selectedTrip.start_date + 'T00:00:00').getTime()) / 86400000) + 1) : null;
-
-  function stopsFor(date: string) { return (selectedTrip?.items ?? []).filter((i) => i.planned_date === date).sort((a, b) => (a.sequence_no ?? 0) - (b.sequence_no ?? 0) || (a.start_time ?? '').localeCompare(b.start_time ?? '')); }
-  function getStopForDate(date: string): string | null { if (!selectedTrip?.start_date || !tripStops.length) return null; const start = new Date(selectedTrip.start_date + 'T00:00:00'); const target = new Date(date + 'T00:00:00'); const off = Math.floor((target.getTime() - start.getTime()) / 86400000); let cursor = 0; for (const s of tripStops) { const n = s.days || 1; if (off >= cursor && off < cursor + n) return s.label; cursor += n; } return null; }
-  function stopItemCount(label: string) { return (selectedTrip?.items ?? []).filter((i) => `${i.destination_name ?? ''} ${i.region_country ?? ''}`.toLowerCase().includes(label.trim().toLowerCase())).length; }
-
-  async function copyItinerary() {
-    if (!selectedTrip) return;
-    setCopyErr(null);
-    const lines: string[] = [`${selectedTrip.trip_name ?? 'Trip'} — ${fmtDate(selectedTrip.start_date)} → ${fmtDate(selectedTrip.end_date)}`, ''];
-    plannedDates.forEach((d, i) => {
-      lines.push(`DAY ${i + 1} · ${fmtDate(d)}${getStopForDate(d) ? ` · ${getStopForDate(d)}` : ''}`);
-      stopsFor(d).forEach((it) => {
-        if (it.listing_type === 'Note') lines.push(`   📝 ${it.notes}`);
-        else lines.push(`   ${fmtTime(it.start_time) || '—'} · ${slotLabel(it)} · ${it.name}${it.rating != null ? ` (★${Number(it.rating).toFixed(1)})` : ''}`);
+    const { data: b } = await supabase.from('bookings').select('*').eq('user_id', uid).order('booking_id', { ascending: false });
+    const brows = (b ?? []) as BookingRow[];
+    const lids = [...new Set(brows.map((x) => x.listing_id))];
+    if (lids.length) {
+      const { data: ls } = await supabase.from('listings').select('listing_id, name, listing_type, image_url').in('listing_id', lids);
+      const lm: Record<string, any> = {};
+      (ls ?? []).forEach((l: any) => { lm[l.listing_id] = l; });
+      brows.forEach((x) => {
+        x.listing_name = lm[x.listing_id]?.name;
+        x.listing_type = lm[x.listing_id]?.listing_type;
+        x.image_url = lm[x.listing_id]?.image_url;
       });
-      lines.push('');
-    });
-    if (unscheduled.length) { lines.push('NOT SCHEDULED YET:'); unscheduled.forEach((u) => lines.push(`   · ${u.name}`)); }
-    const text = lines.join('\n');
-    try {
-      if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(text);
-      else {
-        const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
-      }
-      setCopied(true); setTimeout(() => setCopied(false), 2000);
-    } catch { setCopyErr('Could not copy — your browser blocked clipboard access.'); }
+    }
+    setBookings(brows);
+    setLoading(false);
   }
 
-  // ---- render ----
-  if (loading) return (<main className={`${CANVAS} min-h-[70vh] flex items-center justify-center`}><div className={`${NEU} rounded-[2rem] px-10 py-8 text-sm font-bold text-slate-500 animate-pulse`}>Loading your live trip…</div></main>);
-  if (!userId) return (
-    <main className={`${CANVAS} min-h-[70vh] flex items-center justify-center p-8`}>
-      <div className={`${GLASS} rounded-[2rem] p-10 max-w-md w-full text-center ${FLOAT_SHADOW}`}>
-        <GlassWellIcon gradient="from-indigo-500 to-violet-500" size="lg"><RouteIcon className="w-7 h-7" /></GlassWellIcon>
-        <h1 className="text-2xl font-black text-slate-800 mt-5 mb-2">Trip cockpit</h1>
-        <p className="text-sm text-slate-500 mb-7">Sign in to view your live trip day by day.</p>
-        <Link href="/login" className={`${BTN_PRIMARY} inline-block px-7 py-3 text-base`}><span className="relative">Sign in</span></Link>
-      </div>
-    </main>
-  );
-  if (!selectedTrip) return (
-    <main className={`${CANVAS} min-h-[70vh] flex items-center justify-center p-8`}>
-      <div className={`${GLASS} rounded-[2rem] p-10 max-w-md w-full text-center ${FLOAT_SHADOW}`}>
-        <GlassWellIcon gradient="from-indigo-500 to-violet-500" size="lg"><MapIcon className="w-7 h-7" /></GlassWellIcon>
-        <h1 className="text-2xl font-black text-slate-800 mt-5 mb-2">No live trips right now</h1>
-        <p className="text-sm text-slate-500 mb-7">The cockpit shows your ongoing or upcoming trip. Plan one and it will appear here.</p>
-        <Link href="/?tab=plan" className={`${BTN_PRIMARY} inline-block px-7 py-3 text-base`}><span className="relative">Open the planner</span></Link>
-      </div>
-    </main>
-  );
+  async function cancelBooking(id: string) {
+    setBusyId(id);
+    const { error } = await supabase.from('bookings').update({ status: 'cancelled' }).eq('booking_id', id);
+    if (!error && role.userId) await load(role.userId);
+    setBusyId(null);
+  }
+
+  // ---- loading skeleton ----
+  if (role.loading || loading) {
+    return (
+      <main className={`${CANVAS} min-h-screen pb-16 page-enter`}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 pt-32">
+          <div className={`${GLASS} rounded-2xl h-24 mb-6 animate-pulse`} />
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">{[0, 1, 2, 3, 4].map((i) => <div key={i} className={`${INSET} rounded-2xl h-24 animate-pulse`} />)}</div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">{[0, 1, 2].map((i) => <div key={i} className={`${INSET} rounded-2xl h-64 animate-pulse`} />)}</div>
+        </div>
+      </main>
+    );
+  }
+
+  // ---- signed out ----
+  if (!role.authId) {
+    return (
+      <main className={`${CANVAS} min-h-screen flex items-center justify-center p-8 page-enter pt-32`}>
+        <div className="rounded-[2rem] bg-white/85 px-8 py-14 text-center max-w-md w-full shadow-[0_18px_44px_-16px_rgba(110,120,190,0.4)] border border-white/60">
+          <GlassWellIcon gradient="from-indigo-500 to-violet-500" size="lg"><MapIcon className="w-8 h-8" /></GlassWellIcon>
+          <h1 className="text-2xl font-black text-slate-800 mt-6 mb-3">My trips & bookings</h1>
+          <p className="text-base text-slate-500 mb-8 leading-relaxed">Sign in to see everything you've planned, booked, and reviewed.</p>
+          <div className="flex flex-col sm:flex-row justify-center gap-4">
+            <Link href="/login" className={`${BTN_PRIMARY} px-8 py-3.5 text-sm font-bold`}><span className="relative">Sign in</span></Link>
+            <Link href="/signup" className={`${BTN_GHOST} px-8 py-3.5 text-sm font-bold`}>Create account</Link>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  const needsReview = (t: TripRow) => getTripStatus(t) === 'finished' && t.placesCount > 0 && t.reviewedCount < t.placesCount;
+  const fullyReviewed = (t: TripRow) => getTripStatus(t) === 'finished' && t.placesCount > 0 && t.reviewedCount >= t.placesCount;
+
+  const sortedTrips = [...trips].sort((a, b) => {
+    const rank = (t: TripRow) => (getTripStatus(t) !== 'finished' ? 0 : needsReview(t) ? 1 : 2);
+    return rank(a) - rank(b) || (b.start_date ?? '').localeCompare(a.start_date ?? '');
+  });
+
+  const activeTrips = trips.filter((t) => getTripStatus(t) !== 'finished');
+  const finishedTrips = trips.filter((t) => getTripStatus(t) === 'finished');
+  const pendingBookings = bookings.filter((b) => (b.status ?? 'pending') === 'pending');
+  const pendingReviews = trips.filter(needsReview).length;
+
+  const filteredTrips = sortedTrips.filter((t) => tripFilter === 'all' || getTripStatus(t) === tripFilter);
+  const filterCount = (f: typeof tripFilter) => (f === 'all' ? trips.length : trips.filter((t) => getTripStatus(t) === f).length);
 
   return (
-    <main className={`${CANVAS} page-enter`}>
-      <style>{`@keyframes tmRise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } } .tm-rise { animation: tmRise .55s cubic-bezier(.22,.9,.32,1) both; }`}</style>
-      <div className="pointer-events-none fixed -top-32 -left-32 w-[34rem] h-[34rem] rounded-full bg-violet-300/30 blur-3xl z-0" />
-      <div className="pointer-events-none fixed top-1/3 -right-40 w-[30rem] h-[30rem] rounded-full bg-sky-300/25 blur-3xl z-0" />
+    <main className={`${CANVAS} min-h-screen pb-16 page-enter relative`}>
+      <style>{`
+        @keyframes tmPopM { from { opacity: 0; transform: translateY(10px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        .tm-pop-m { animation: tmPopM .45s cubic-bezier(.22,.9,.32,1) both; }
+      `}</style>
+      
+      {/* Decorative blur elements - safely contained in background */}
+      <div className="pointer-events-none fixed top-0 left-0 w-full h-full overflow-hidden z-0">
+        <div className="absolute -top-32 -left-32 w-[34rem] h-[34rem] rounded-full bg-violet-300/20 blur-3xl" />
+        <div className="absolute top-1/3 -right-40 w-[30rem] h-[30rem] rounded-full bg-sky-300/15 blur-3xl" />
+      </div>
 
-      <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-5">
+      {/* Increased top padding (pt-28 md:pt-32) to clear the global navbar */}
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 md:pt-32 pb-10">
 
-        {/* Switcher (live trips only) */}
-        {liveTrips.length > 1 && (
-          <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
-            {liveTrips.map((t) => {
-              const sel = t.trip_id === selectedTrip.trip_id;
-              return (
-                <button key={t.trip_id} type="button" onClick={() => setSelectedTripId(t.trip_id)} className={`shrink-0 text-left rounded-2xl px-4 py-2.5 min-w-[170px] transition-all duration-300 ${sel ? `${GLASS_SM} ring-2 ring-violet-400/60` : `${NEU_SM} hover:-translate-y-0.5`}`}>
-                  <p className={`font-black truncate text-sm ${sel ? 'text-slate-800' : 'text-slate-600'}`}>{t.trip_name ?? `Trip ${t.trip_id}`}</p>
-                  <p className="text-[10px] font-bold text-slate-500 truncate">{fmtDate(t.start_date)} · {getTripStatus(t)}</p>
-                </button>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Header */}
-        <div className={`${GLASS} rounded-[2rem] p-6 md:p-8 ${FLOAT_SHADOW} relative overflow-hidden tm-rise`}>
-          <div className="pointer-events-none absolute -top-20 -right-20 h-56 w-56 rounded-full bg-gradient-to-br from-violet-400/25 to-fuchsia-400/15 blur-3xl" />
-          <div className="relative">
-            <div className="flex items-center gap-2 flex-wrap mb-2">
-              <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider backdrop-blur-md border ${statusPill(status!)}`}>{status === 'ongoing' ? 'Live now' : status}</span>
-              {status === 'ongoing' && dayIndex && (<span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${GLASS_SM} text-emerald-700`}><span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse mr-1" />Day {dayIndex}{tripDays ? ` of ${tripDays}` : ''}</span>)}
+        {/* Mission bar */}
+        <div className="mb-8">
+          <div className={`${GLASS} rounded-2xl px-5 py-5 md:px-6 shadow-lg backdrop-blur-xl border border-white/60`}>
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-4">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-bold uppercase tracking-wider text-violet-600 mb-1">Traveler HQ</p>
+                <h1 className="text-xl md:text-2xl font-black tracking-tight text-slate-800 truncate leading-tight">My trips & bookings</h1>
+              </div>
+              <div className="flex items-center gap-3 shrink-0 text-xs font-bold text-slate-600">
+                <span className="px-3 py-1.5 rounded-full bg-white/70 border border-white/80 tabular-nums">{activeTrips.length} active</span>
+                <span className="px-3 py-1.5 rounded-full bg-white/70 border border-white/80 tabular-nums">{finishedTrips.length} finished</span>
+                {pendingReviews > 0 && <span className="px-3 py-1.5 rounded-full bg-amber-50 border border-amber-200/80 text-amber-700 tabular-nums">{pendingReviews} to review</span>}
+              </div>
+              <div className="flex items-center gap-3 shrink-0">
+                <Link href="/" className={`${BTN_PRIMARY} px-5 py-3 text-sm font-bold`}><span className="relative flex items-center gap-2"><PlusIcon className="w-4 h-4" />Plan a trip</span></Link>
+                <Link href="/" className={`${BTN_GHOST} px-5 py-3 text-sm font-bold whitespace-nowrap`}>Dashboard</Link>
+              </div>
             </div>
-            <h1 className="text-3xl md:text-4xl font-black tracking-tight text-slate-800 truncate">{selectedTrip.trip_name ?? `Trip ${selectedTrip.trip_id}`}</h1>
-            <p className="mt-1.5 text-sm font-bold text-slate-500">{fmtDate(selectedTrip.start_date)} → {fmtDate(selectedTrip.end_date)} · {tripStops.length} stop{tripStops.length === 1 ? '' : 's'} · {placeCount} places</p>
-            <div className="mt-5 flex items-center gap-3">
-              <div className={`${INSET} flex-1 h-3 rounded-full overflow-hidden`}><div className={`h-full rounded-full transition-all duration-700 ${GLOSS} bg-gradient-to-r ${GRAD}`} style={{ width: `${Math.min(100, (plannedPlaceCount / capacity) * 100)}%` }} /></div>
-              <span className="text-xs text-slate-600 font-black whitespace-nowrap">{plannedPlaceCount}/{capacity} scheduled</span>
-            </div>
-            <div className="mt-6 flex flex-wrap gap-2">
-              <Link href={`/?trip=${selectedTrip.trip_id}`} className={`${BTN_PRIMARY} px-5 py-2.5 text-sm`}><span className="relative flex items-center gap-2"><RouteIcon className="w-4 h-4" />Edit in planner</span></Link>
-              <button type="button" onClick={copyItinerary} className={`${BTN_GHOST} px-5 py-2.5 text-sm`}><span className="relative">{copied ? '✓ Copied!' : 'Copy itinerary'}</span></button>
-            </div>
-            {copyErr && <p className={`mt-3 text-xs font-semibold text-rose-700 ${GLASS} border-rose-200/70 rounded-xl px-3 py-2`}>{copyErr}</p>}
           </div>
         </div>
+
+        {/* Review alert */}
+        {pendingReviews > 0 && (
+          <div className="mb-6 flex items-center gap-4 p-5 rounded-2xl bg-amber-50/90 border border-amber-200/80 shadow-sm">
+            <GlassWellIcon gradient="from-amber-400 to-orange-500"><Star className="w-6 h-6" /></GlassWellIcon>
+            <p className="flex-1 text-sm font-semibold text-amber-800 leading-relaxed">{pendingReviews} finished trip{pendingReviews === 1 ? '' : 's'} still need{pendingReviews === 1 ? 's' : ''} reviews — rate the places you visited to help other travelers.</p>
+          </div>
+        )}
 
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 tm-rise" style={{ animationDelay: '60ms' }}>
-          <SummaryTile label="Days" value={String(plannedDates.length || (tripDays ?? 0))} />
-          <SummaryTile label="Places" value={String(placeCount)} />
-          <SummaryTile label="Scheduled" value={String(plannedPlaceCount)} />
-          <SummaryTile label="Stops" value={String(tripStops.length)} />
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+          <StatTile label="Active trips" value={String(activeTrips.length)} />
+          <StatTile label="Finished" value={String(finishedTrips.length)} tone="slate" />
+          <StatTile label="Bookings" value={String(bookings.length)} tone="emerald" />
+          <StatTile label="Awaiting reply" value={String(pendingBookings.length)} tone={pendingBookings.length ? 'amber' : 'slate'} />
+          <StatTile label="To review" value={String(pendingReviews)} tone={pendingReviews ? 'amber' : 'slate'} />
         </div>
 
-        {/* Stops summary */}
-        {tripStops.length > 0 && (
-          <div className={`${GLASS} rounded-[2rem] p-5 tm-rise`} style={{ animationDelay: '90ms' }}>
-            <h2 className="text-sm font-black uppercase tracking-[0.15em] text-slate-500 mb-3">Route</h2>
-            <div className="flex flex-wrap gap-2">
-              {tripStops.map((s, i) => (
-                <span key={s.label} className={`inline-flex items-center gap-2 rounded-2xl ${NEU_SM} px-3.5 py-2 text-sm font-bold text-slate-700`}>
-                  <span className={`w-5 h-5 rounded-full bg-gradient-to-br ${GRAD} text-white text-[10px] font-black flex items-center justify-center`}>{i + 1}</span>
-                  {s.label}
-                  <span className="text-[10px] font-black text-slate-400">{s.days}d · {stopItemCount(s.label)} places</span>
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
+        {/* Tabs */}
+        <div className={`${GLASS} rounded-2xl p-1.5 inline-flex gap-1.5 mb-6 border border-white/60`}>
+          {([['trips', `Trips (${trips.length})`, <RouteIcon key="r" className="w-4 h-4" />], ['bookings', `Bookings (${bookings.length})`, <CalendarIcon key="c" className="w-4 h-4" />]] as const).map(([id, label, ic]) => (
+            <button key={id} type="button" onClick={() => setTab(id)} className={`flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-bold tracking-wide whitespace-nowrap transition active:scale-95 ${tab === id ? PILL_ACTIVE : 'text-slate-500 hover:text-violet-600 hover:bg-white/50'}`}>
+              <span className="relative flex items-center gap-2">{ic}{label}</span>
+            </button>
+          ))}
+        </div>
 
-        {/* Timeline (read-only) */}
-        {plannedDates.length === 0 ? (
-          <div className={`rounded-3xl border-2 border-dashed border-violet-300/60 ${NEU} p-10 text-center tm-rise`}>
-            <GlassWellIcon gradient="from-indigo-500 to-violet-500" size="lg"><SparkleIcon className="w-7 h-7" /></GlassWellIcon>
-            <p className="text-base text-slate-700 font-bold mt-5 mb-2">Nothing scheduled yet</p>
-            <p className="text-sm text-slate-500 mb-6">This trip has places but no days assigned. Open the planner and hit Auto-plan.</p>
-            <Link href={`/?trip=${selectedTrip.trip_id}`} className={`${BTN_PRIMARY} inline-block px-6 py-3 text-sm`}><span className="relative">Edit in planner</span></Link>
+        {tab === 'trips' ? (
+          trips.length === 0 ? (
+            <div className={`${GLASS} rounded-[2rem] p-12 text-center border border-white/60`}>
+              <EmptyBox icon={<MapIcon className="w-8 h-8" />} title="No trips yet" sub="Create your first trip on the dashboard and start saving places into a day-by-day plan." />
+              <Link href="/" className={`mt-8 inline-block ${BTN_PRIMARY} px-8 py-3.5 text-sm font-bold`}><span className="relative flex items-center gap-2"><PlusIcon className="w-5 h-5" />Open trip planner</span></Link>
+            </div>
+          ) : (
+            <>
+              <div className="flex flex-wrap gap-2 mb-6">
+                {(['all', 'upcoming', 'ongoing', 'finished'] as const).map((f) => (
+                  <button key={f} type="button" onClick={() => setTripFilter(f)} className={`px-4 py-2.5 rounded-xl text-xs font-bold tracking-wide whitespace-nowrap transition active:scale-95 ${tripFilter === f ? PILL_ACTIVE : `${NEU_SM} text-slate-600 hover:text-violet-600 hover:bg-white/60`}`}>
+                    <span className="relative">{f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1)} {filterCount(f)}</span>
+                  </button>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                {filteredTrips.map((t, ti) => {
+                  const st = getTripStatus(t);
+                  const nr = needsReview(t);
+                  const fr = fullyReviewed(t);
+                  const progress = t.placesCount > 0 ? Math.round((t.reviewedCount / t.placesCount) * 100) : 0;
+                  const placeItems = t.items.filter((it) => !it.isNote);
+                  const stripe = STOP_FILL[0 % STOP_FILL.length];
+                  return (
+                    <article
+                      key={t.trip_id}
+                      className={`relative rounded-2xl p-6 pl-7 tm-pop-m transition hover:-translate-y-1 hover:shadow-xl ${
+                        fr ? 'bg-white/60 border border-white/80 opacity-80 saturate-[.85] hover:opacity-100' : `${GLASS} hover:shadow-[0_20px_40px_-16px_rgba(110,120,190,0.6)] border border-white/60`
+                      }`}
+                      style={{ animationDelay: `${Math.min(ti, 12) * 45}ms` }}
+                    >
+                      <span className={`absolute left-0 top-6 bottom-6 w-1.5 rounded-r-full ${fr ? 'bg-slate-300' : stripe}`} aria-hidden="true" />
+
+                      <div className="flex items-start gap-4 mb-2">
+                        <span className={`w-12 h-12 shrink-0 rounded-2xl ${fr ? 'bg-slate-200 text-slate-400' : `bg-gradient-to-br ${GRAD} text-white shadow-md`} flex items-center justify-center`}><RouteIcon className="w-6 h-6" /></span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className={`font-black text-lg truncate ${fr ? 'text-slate-500' : 'text-slate-800'}`}>{t.trip_name ?? `Trip ${t.trip_id}`}</p>
+                            <span className={`shrink-0 w-2.5 h-2.5 rounded-full ${st === 'ongoing' ? 'bg-sky-500 animate-pulse' : st === 'finished' ? 'bg-slate-400' : 'bg-emerald-500'}`} />
+                          </div>
+                          <p className="text-xs font-semibold text-slate-500 truncate tabular-nums mt-0.5">{fmtDate(t.start_date)} → {fmtDate(t.end_date)}</p>
+                        </div>
+                        <span className={`shrink-0 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${statusPill(st)}`}>{st}</span>
+                      </div>
+
+                      <p className="text-xs font-semibold text-slate-500 mb-2">{placeItems.length} place{placeItems.length === 1 ? '' : 's'}{t.stops.length ? ` · ${t.stops.length} stop${t.stops.length === 1 ? '' : 's'}` : ''}</p>
+
+                      <MiniRoadmap trip={t} todayISO={todayISO} />
+
+                      {st === 'finished' && t.placesCount > 0 && (
+                        <div className="mt-3">
+                          <div className="flex items-center justify-between text-xs font-bold text-slate-600 mb-1.5"><span>Reviews</span><span className="tabular-nums">{t.reviewedCount}/{t.placesCount}</span></div>
+                          <div className={`${INSET} w-full h-2.5 rounded-full overflow-hidden border border-white/50`}><div className={`h-full rounded-full transition-all duration-700 ${GLOSS} ${fr ? 'bg-gradient-to-r from-emerald-400 to-teal-500' : `bg-gradient-to-r ${GRAD}`}`} style={{ width: `${progress}%` }} /></div>
+                        </div>
+                      )}
+
+                      <div className="mt-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="min-w-0 flex items-center gap-2">
+                          {nr && <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-50 border border-amber-200/80 text-[11px] font-black uppercase tracking-wider text-amber-700 whitespace-nowrap"><span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />Needs review</span>}
+                          {fr && <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 whitespace-nowrap"><CheckIcon className="w-4 h-4 text-emerald-500" />Fully reviewed</span>}
+                          {!nr && !fr && <span className="text-xs font-bold text-slate-500 truncate">{st === 'ongoing' ? 'In progress' : 'Ready to plan'}</span>}
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {nr ? (
+                            <Link href={`/my-trips/${t.trip_id}/review`} className={`px-4 py-2.5 rounded-xl text-xs font-bold text-white shadow-md hover:shadow-lg transition flex items-center gap-2`} style={{ backgroundImage: 'linear-gradient(to right,#f59e0b,#f97316)' }}><span className="relative flex items-center gap-1.5"><Star className="w-4 h-4" />Review {t.placesCount - t.reviewedCount}</span></Link>
+                          ) : null}
+                          <Link href={`/?trip=${t.trip_id}`} className={`px-4 py-2.5 rounded-xl text-xs font-bold ${nr ? 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 shadow-sm' : `${BTN_PRIMARY} shadow-md`} transition flex items-center gap-2`}><span className="relative flex items-center gap-1.5"><MapIcon className="w-4 h-4" />Open board</span></Link>
+                        </div>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+
+              {filteredTrips.length === 0 && (
+                <div className={`${GLASS} rounded-2xl p-12 text-center border border-white/60`}><p className="text-base font-semibold text-slate-500">No trips match this filter.</p></div>
+              )}
+            </>
+          )
+        ) : bookings.length === 0 ? (
+          <div className={`${GLASS} rounded-[2rem] p-12 text-center border border-white/60`}>
+            <EmptyBox icon={<CalendarIcon className="w-8 h-8" />} title="No booking requests yet" sub="When you request dates on a listing, the request and its status will show up here." />
+            <Link href="/search" className={`mt-8 inline-block ${BTN_PRIMARY} px-8 py-3.5 text-sm font-bold`}><span className="relative flex items-center gap-2"><MapIcon className="w-5 h-5" />Browse places</span></Link>
           </div>
         ) : (
-          <div className="space-y-4">
-            {plannedDates.map((date, di) => {
-              const dayItems = stopsFor(date);
-              const isToday = date === todayISO;
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {bookings.map((b, bi) => {
+              const pending = (b.status ?? 'pending') === 'pending';
               return (
-                <div key={date} className={`rounded-3xl p-5 tm-rise ${isToday ? 'bg-white ring-2 ring-emerald-400/70 shadow-[0_18px_44px_-18px_rgba(16,185,129,0.45)]' : `${NEU_SM}`}`} style={{ animationDelay: `${120 + di * 60}ms` }}>
-                  <div className="flex items-center justify-between gap-3 mb-4">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <span className={`w-9 h-9 shrink-0 rounded-xl bg-gradient-to-br ${GRAD} text-white text-sm font-black flex items-center justify-center shadow-md`}>{di + 1}</span>
-                      <div className="min-w-0">
-                        <p className="font-black text-slate-800 text-base leading-tight">{fmtDate(date)}{isToday && <span className="ml-2 text-[10px] font-black uppercase tracking-wider text-emerald-600">Today</span>}</p>
-                        <p className="text-[11px] font-bold text-slate-500 truncate">{getStopForDate(date) ? `📍 ${getStopForDate(date)}` : 'No stop assigned'}</p>
-                      </div>
+                <div key={b.booking_id} className={`relative rounded-2xl ${GLASS} p-5 pl-6 flex flex-col sm:flex-row sm:items-center gap-4 tm-pop-m transition hover:-translate-y-1 hover:shadow-xl border border-white/60`} style={{ animationDelay: `${Math.min(bi, 12) * 40}ms` }}>
+                  <span className={`absolute left-0 top-5 bottom-5 w-1.5 rounded-r-full ${pending ? 'bg-gradient-to-b from-amber-400 to-orange-400' : b.status === 'confirmed' ? 'bg-gradient-to-b from-emerald-400 to-teal-500' : b.status === 'rejected' ? 'bg-gradient-to-b from-rose-400 to-red-500' : 'bg-slate-300'}`} aria-hidden="true" />
+                  {b.image_url ? (
+                    <img src={b.image_url} alt="" className="w-16 h-16 rounded-xl object-cover shrink-0 shadow-md border border-white/50" />
+                  ) : (
+                    <div className={`w-16 h-16 rounded-xl shrink-0 bg-gradient-to-br from-indigo-100 to-violet-100 flex items-center justify-center text-violet-500 font-black text-lg border border-white/60`}>
+                      {(b.listing_name ?? 'P').charAt(0)}
                     </div>
-                    <span className="text-[11px] font-black text-slate-400 shrink-0">{dayItems.filter((i) => i.listing_type !== 'Note').length}/3 places</span>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-black text-slate-800 text-base truncate">{b.listing_name ?? b.listing_id}</p>
+                    <p className="text-xs font-semibold text-slate-500 truncate tabular-nums mt-1">{b.listing_type ?? 'Place'} · {fmtDate(b.check_in)} → {fmtDate(b.check_out)} · {b.guests ?? 1} guest{(b.guests ?? 1) === 1 ? '' : 's'}</p>
+                    {b.special_requests && <p className="text-xs font-medium text-slate-500 mt-1.5 truncate italic bg-slate-50 p-2 rounded-lg border border-slate-100">"{b.special_requests}"</p>}
                   </div>
-                  <div className="space-y-2">
-                    {dayItems.map((it) => (
-                      it.listing_type === 'Note' ? (
-                        <div key={it.key} className="flex items-start gap-3 rounded-2xl bg-amber-50/80 border border-amber-200/70 px-4 py-3">
-                          <span className="shrink-0 px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 text-white text-[9px] font-black uppercase tracking-wider shadow-sm mt-0.5">📝 Note</span>
-                          <p className="flex-1 text-sm text-slate-700 leading-relaxed">{it.notes}</p>
-                        </div>
-                      ) : (
-                        <Link key={it.key} href={`/listing/${it.listing_id}`} className="group flex items-center gap-3 rounded-2xl bg-white/75 border border-white/80 px-4 py-3 shadow-[0_4px_16px_rgba(110,120,190,0.12)] transition hover:shadow-[0_8px_24px_rgba(110,120,190,0.2)] hover:-translate-y-0.5">
-                          {it.image_url ? (<img src={it.image_url} alt="" className="w-10 h-10 rounded-xl object-cover shrink-0 shadow-md" />) : (<span className={`shrink-0 px-2.5 py-1 rounded-full bg-gradient-to-r ${GRAD} text-white text-[9px] font-black uppercase tracking-wider shadow-sm`}>{slotLabel(it)}</span>)}
-                          <div className="flex-1 min-w-0">
-                            <p className="font-black text-slate-800 text-base truncate group-hover:text-violet-700 transition">{it.name}</p>
-                            <p className="text-[11px] font-semibold text-slate-500 truncate">{it.listing_type ?? 'Place'}{it.destination_name ? ` · ${it.destination_name}` : ''}</p>
-                          </div>
-                          {it.rating != null && (<span className="shrink-0 flex items-center gap-1 text-xs font-black text-amber-600"><Star className="w-3.5 h-3.5" />{Number(it.rating).toFixed(1)}</span>)}
-                          <span className="shrink-0 text-xs font-black text-slate-600 bg-[#e4e8f4] rounded-lg px-2.5 py-1.5 tabular-nums">{fmtTime(it.start_time) || slotLabel(it)}</span>
-                        </Link>
-                      )
-                    ))}
-                    {dayItems.length === 0 && (<p className={`text-center text-xs text-slate-400 font-semibold py-5 ${INSET} rounded-2xl`}>Rest day — nothing planned.</p>)}
+                  <div className="flex flex-col sm:items-end gap-3 shrink-0 mt-2 sm:mt-0">
+                    {bookingChip(b.status)}
+                    <div className="flex items-center gap-2">
+                      <Link href={`/listing/${b.listing_id}`} className="px-4 py-2 rounded-lg text-xs font-bold text-violet-700 bg-violet-50 hover:bg-violet-100 border border-violet-100 transition whitespace-nowrap">View Listing</Link>
+                      {pending && (
+                        <button 
+                          type="button" 
+                          onClick={() => cancelBooking(b.booking_id)} 
+                          disabled={busyId === b.booking_id} 
+                          className="px-4 py-2 rounded-lg text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-100 transition disabled:opacity-60 whitespace-nowrap"
+                        >
+                          {busyId === b.booking_id ? 'Canceling...' : 'Cancel Request'}
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
             })}
           </div>
         )}
-
-        {/* Unscheduled (view-only) */}
-        {unscheduled.length > 0 && (
-          <div className={`${GLASS} rounded-[2rem] p-5 tm-rise`}>
-            <div className="flex items-center justify-between gap-3 mb-3">
-              <h2 className="text-sm font-black uppercase tracking-[0.15em] text-slate-500">Not scheduled yet</h2>
-              <Link href={`/?trip=${selectedTrip.trip_id}`} className="text-[11px] font-black text-violet-600 hover:text-violet-700 transition">Schedule in planner →</Link>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {unscheduled.map((u) => (
-                <span key={u.key} className={`inline-flex items-center gap-2 rounded-2xl ${NEU_SM} px-3.5 py-2 text-sm font-bold text-slate-700`}>{u.name}<span className="text-[10px] font-black text-slate-400">{u.listing_type ?? 'Place'}</span></span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <p className="text-center text-[11px] font-semibold text-slate-400 pb-4">Viewing only — edits happen in the planner so your itinerary stays consistent everywhere.</p>
       </div>
     </main>
   );
